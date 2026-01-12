@@ -1,0 +1,3 @@
+add dashboard to doctor side,
+add booking routes as per vaccine quantity
+.
