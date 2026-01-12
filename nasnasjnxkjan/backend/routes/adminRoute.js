@@ -6,6 +6,7 @@ import upload from '../middleware/multer.js';
 
 const adminRouter = express.Router();
 
+
 adminRouter.post("/login", loginAdmin)
 adminRouter.post("/add-hospital", authAdmin, upload.single('image'), addHospital)
 adminRouter.post("/add-vaccine", authAdmin, upload.single('image'), addVaccine)
