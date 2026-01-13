@@ -24,7 +24,7 @@ const Hospitals = () => {
                     className='w-full px-4 py-2 border border-[#C9D8FF] rounded-full focus:outline-none focus:ring-2 focus:ring-[#EAEFFF] text-sm'
                 />
             </div>
-            <h1 className='text-3xl font-medium'>All Hospitals</h1>
+            <h1 className='text-3xl font-medium'>Search Hospitals</h1>
             <p className='sm:w-1/2 text-center text-sm'>Simply browse through our extensive list of trusted hospitals.</p>
             <div className='w-full grid grid-cols-auto gap-4 pt-5 gap-y-6 px-3 sm:px-0'>
                 {filteredHospitals.length > 0 ? (

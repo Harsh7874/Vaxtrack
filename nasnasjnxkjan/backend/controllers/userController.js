@@ -129,6 +129,7 @@ const updateProfile = async (req, res) => {
         res.json({ success: false, message: error.message })
     }
 }
+const MAX_USERS_PER_SLOT = 10;
 
 // API to book appointment 
 const bookAppointment = async (req, res) => {
@@ -139,23 +140,37 @@ const bookAppointment = async (req, res) => {
         const hospitalData = await hospitalModel.findById(hospitalId).select("-password")
 
         if (!hospitalData.available) {
-            return res.json({ success: false, message: 'Doctor Not Available' })
+            return res.json({ success: false, message: 'Hospital Not Available' })
         }
 
-        let slots_booked = hospitalData.slots_booked
 
         // checking for slot availablity 
-        if (slots_booked[slotDate]) {
-            if (slots_booked[slotDate].includes(slotTime)) {
-                return res.json({ success: false, message: 'Slot Not Available' })
-            }
-            else {
-                slots_booked[slotDate].push(slotTime)
-            }
-        } else {
-            slots_booked[slotDate] = []
-            slots_booked[slotDate].push(slotTime)
+        let slots_booked = hospitalData.slots_booked || {};
+
+        // If date does not exist, create it
+        if (!slots_booked[slotDate]) {
+            slots_booked[slotDate] = [];
         }
+
+        // Find slot by time
+        let slot = slots_booked[slotDate].find(s => s.time === slotTime);
+
+        if (slot) {
+            // Slot exists → check capacity
+            if (slot.nuser >= MAX_USERS_PER_SLOT) {
+                return res.json({ success: false, message: "Slot Full" });
+            }
+
+            // Increase user count
+            slot.nuser += 1;
+        } else {
+            // New slot → create with first booking
+            slots_booked[slotDate].push({
+                time: slotTime,
+                nuser: 1
+            });
+        }
+
 
         const userData = await userModel.findById(userId).select("-password")
 

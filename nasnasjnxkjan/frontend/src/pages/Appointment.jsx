@@ -78,14 +78,26 @@ const Appointment = () => {
         let month = currentDate.getMonth() + 1;
         let year = currentDate.getFullYear();
         const slotDate = `${day}_${month}_${year}`;
-        const isSlotAvailable = !hospitalInfo?.slots_booked?.[slotDate]?.includes(formattedTime);
+        const MAX_USERS_PER_SLOT = 10;
 
-        if (isSlotAvailable) {
-          timeSlots.push({
-            datetime: new Date(currentDate),
-            time: formattedTime,
-          });
-        }
+        const bookedSlotsForDay = hospitalInfo?.slots_booked?.[slotDate] || [];
+
+        const slotInfo = bookedSlotsForDay.find(s => s.time === formattedTime);
+
+        const bookedCount = slotInfo ? slotInfo.nuser : 0;
+        const remaining = MAX_USERS_PER_SLOT - bookedCount;
+
+        const isSlotAvailable = remaining > 0;
+
+       if (isSlotAvailable) {
+  timeSlots.push({
+    datetime: new Date(currentDate),
+    time: formattedTime,
+    booked: bookedCount,
+    remaining: remaining
+  });
+}
+
 
         currentDate.setMinutes(currentDate.getMinutes() + 30);
       }
@@ -197,11 +209,10 @@ const Appointment = () => {
               <div
                 key={index}
                 onClick={() => setSelectedVaccine(vaccine)}
-                className={`text-center py-4 px-6 min-w-32 rounded-full cursor-pointer ${
-                  selectedVaccine && selectedVaccine.vaccineId === vaccine.vaccineId
+                className={`text-center py-4 px-6 min-w-32 rounded-full cursor-pointer ${selectedVaccine && selectedVaccine.vaccineId === vaccine.vaccineId
                     ? 'bg-primary text-white'
                     : 'border border-[#DDDDDD]'
-                }`}
+                  }`}
               >
                 <p>{vaccine.vaccineName}</p>
                 <p>{currencySymbol}{vaccine.price}</p>
@@ -227,9 +238,8 @@ const Appointment = () => {
               <div
                 key={index}
                 onClick={() => setSlotIndex(index)}
-                className={`text-center py-6 min-w-16 rounded-full cursor-pointer ${
-                  slotIndex === index ? 'bg-primary text-white' : 'border border-[#DDDDDD]'
-                }`}
+                className={`text-center py-6 min-w-16 rounded-full cursor-pointer ${slotIndex === index ? 'bg-primary text-white' : 'border border-[#DDDDDD]'
+                  }`}
               >
                 <p>{item[0] && daysOfWeek[item[0].datetime.getDay()]}</p>
                 <p>{item[0] && item[0].datetime.getDate()}</p>
@@ -239,17 +249,25 @@ const Appointment = () => {
         <div className='flex items-center gap-3 w-full overflow-x-scroll mt-4'>
           {hospitalSlots.length > 0 &&
             hospitalSlots[slotIndex]?.map((item, index) => (
-              <p
-                key={index}
-                onClick={() => setSlotTime(item.time)}
-                className={`text-sm font-light flex-shrink-0 px-5 py-2 rounded-full cursor-pointer ${
-                  item.time === slotTime
-                    ? 'bg-primary text-white'
-                    : 'text-[#949494] border border-[#B4B4B4]'
-                }`}
-              >
-                {item.time.toLowerCase()}
-              </p>
+           <div
+  key={index}
+  onClick={() => setSlotTime(item.time)}
+  className={`text-sm flex-shrink-0 px-5 py-2 rounded-full cursor-pointer border
+    ${
+      item.time === slotTime
+        ? 'bg-primary text-white border-primary'
+        : 'text-[#949494] border-[#B4B4B4]'
+    }
+  `}
+>
+  <div className="text-center leading-tight">
+    <p>{item.time.toLowerCase()}</p>
+    <p className="text-[11px] opacity-80">
+      {item.remaining} / 10 left
+    </p>
+  </div>
+</div>
+
             ))}
         </div>
         <button

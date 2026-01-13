@@ -13,7 +13,7 @@ import quantityRouter from "./routes/quantityRouter.js"
 // app config
 const app = express()
 const port = process.env.PORT || 4000
-connectDB()
+await connectDB()
 connectCloudinary()
 
 // middlewares

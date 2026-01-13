@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+    const backendUrl = import.meta.env.VITE_BACKEND_URL
 
 const Vaccines = () => {
   const [vaccines, setVaccines] = useState([]);
@@ -10,7 +11,7 @@ const Vaccines = () => {
   useEffect(() => {
     const fetchVaccines = async () => {
       try {
-        const response = await fetch('http://localhost:4000/api/vaccine/list');
+        const response = await fetch(`${backendUrl}/api/vaccine/list`);
         if (!response.ok) throw new Error('Failed to fetch vaccines');
         const data = await response.json();
         if (data.success) {

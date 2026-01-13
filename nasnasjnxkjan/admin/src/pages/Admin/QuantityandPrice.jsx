@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { Card, CardContent, Typography, Table, TableBody, TableCell, TableHead, TableRow, TextField, Button, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import axios from 'axios';
 import { AdminContext } from '../../context/AdminContext';
+    const backendUrl = import.meta.env.VITE_BACKEND_URL
 
 function QuantityAndPrice() {
   const [selectedHospital, setSelectedHospital] = useState(null);
@@ -24,7 +25,7 @@ function QuantityAndPrice() {
   const handleHospitalClick = async (hospitalId) => {
     setSelectedHospital(hospitalId);
     try {
-      const response = await axios.get(`http://localhost:4000/api/admin/all-hospitals/${hospitalId}`,{ headers: { aToken } });
+      const response = await axios.get(`${backendUrl}/api/admin/all-hospitals/${hospitalId}`,{ headers: { aToken } });
       setHospitalVaccines(response.data);
     } catch (error) {
       console.error('Error fetching hospital vaccines:', error);
@@ -40,7 +41,7 @@ function QuantityAndPrice() {
     }
 
     try {
-      await axios.post('http://localhost:4000/api/admin/add-price', {
+      await axios.post(`${backendUrl}/api/admin/add-price`, {
         hospital: selectedHospital,
         vaccine: newVaccineId,
         price: parseFloat(newPrice),
