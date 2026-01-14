@@ -29,8 +29,8 @@ const hospitalSchema = new mongoose.Schema({
 }, 
 
 { minimize: false })
-
-const hospitalModel = mongoose.models.hospital || mongoose.model("hospital", hospitalSchema);
+hospitalSchema.index({ location: "2dsphere" });
+const hospitalModel = mongoose.model("hospital", hospitalSchema);
 export default hospitalModel;
 
 

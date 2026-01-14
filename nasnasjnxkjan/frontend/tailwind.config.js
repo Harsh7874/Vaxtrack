@@ -9,8 +9,17 @@ export default {
       gridTemplateColumns:{
         'auto':'repeat(auto-fill, minmax(200px, 1fr))'
       },
+       animation: {
+        marquee: "marquee 18s linear infinite",
+      },
+      keyframes: {
+        marquee: {
+          "0%": { transform: "translateX(100%)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
+      },
       colors:{
-        'primary':'#5F6FFF'
+        'primary':'#283cf4ff'
       }
     },
   },
