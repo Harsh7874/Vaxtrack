@@ -8,7 +8,6 @@ import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Admin/Dashboard';
 import AllAppointments from './pages/Admin/AllAppointments';
-import AddDoctor from './pages/Admin/AddDoctor';
 import DoctorsList from './pages/Admin/DoctorsList';
 import Login from './pages/Login';
 import AddVaccine from './pages/Admin/AddVaccine';
