@@ -4,11 +4,9 @@ import 'dotenv/config'
 import connectDB from "./config/mongodb.js"
 import connectCloudinary from "./config/cloudinary.js"
 import userRouter from "./routes/userRoute.js"
-import doctorRouter from "./routes/doctorRoute.js"
 import adminRouter from "./routes/adminRoute.js"
 import hospitalRouter from "./routes/hospitalRoute.js"
 import vaccineRouter from "./routes/vaccineRoute.js"
-import quantityRouter from "./routes/quantityRouter.js"
 
 // app config
 const app = express()
@@ -23,10 +21,8 @@ app.use(cors())
 // api endpoints
 app.use("/api/user", userRouter)
 app.use("/api/admin", adminRouter)
-// app.use("/api/doctor", doctorRouter)
 app.use("/api/hospital", hospitalRouter)
 app.use("/api/vaccine", vaccineRouter)
-app.use("/api/hospitalb/",quantityRouter)
 
 
 
