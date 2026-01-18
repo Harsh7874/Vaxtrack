@@ -16,6 +16,23 @@ const AppContextProvider = (props) => {
     const [userData, setUserData] = useState(false)
 
     // Getting Doctors using API
+const refreshHospital = async () => {
+  try {
+    const { data } = await axios.get(
+      `${backendUrl}/api/user/get-hospital/${hospitalId}`
+    );
+
+    if (data.success) {
+      setHospitalInfo(data.hospitalData);
+
+      setAvailableVaccines(
+        data.hospitalData.vaccines.filter(v => v.quantity > 0)
+      );
+    }
+  } catch (error) {
+    console.error("Refresh error:", error);
+  }
+};
 
 
 
@@ -76,7 +93,7 @@ const AppContextProvider = (props) => {
     }, [token])
 
     const value = {
-        hospitals, getHospitalsData,
+        hospitals, getHospitalsData,refreshHospital,
         currencySymbol,
         backendUrl,
         token, setToken,

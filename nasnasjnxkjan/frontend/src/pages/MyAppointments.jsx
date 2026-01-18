@@ -16,10 +16,20 @@ const MyAppointments = () => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
     // Function to format the date eg. ( 20_01_2000 => 20 Jan 2000 )
-    const slotDateFormat = (slotDate) => {
-        const dateArray = slotDate.split('_')
-        return dateArray[0] + " " + months[Number(dateArray[1])] + " " + dateArray[2]
-    }
+
+    const formatSlotDate = (slotDate) => {
+        if (!slotDate) return "";
+
+        const date = new Date(slotDate);
+
+        if (isNaN(date)) return String(slotDate);
+
+        const day = date.getDate();
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+
+        return `${day} ${month} ${year}`;
+    };
 
     // Getting User Appointments Data Using API
     const getUserAppointments = async () => {
@@ -90,7 +100,7 @@ const MyAppointments = () => {
             const { data } = await axios.post(backendUrl + '/api/user/payment-razorpay', { appointmentId }, { headers: { token } })
             if (data.success) {
                 initPay(data.order)
-            }else{
+            } else {
                 toast.error(data.message)
             }
         } catch (error) {
@@ -106,7 +116,7 @@ const MyAppointments = () => {
             if (data.success) {
                 const { session_url } = data
                 window.location.replace(session_url)
-            }else{
+            } else {
                 toast.error(data.message)
             }
         } catch (error) {
@@ -138,7 +148,13 @@ const MyAppointments = () => {
                             <p className='text-[#464646] font-medium mt-1'>Address:</p>
                             <p className=''>{item.hospitalData.address.line1}</p>
                             <p className=''>{item.hospitalData.address.line2}</p>
-                            <p className=' mt-1'><span className='text-sm text-[#3C3C3C] font-medium'>Date & Time:</span> {slotDateFormat(item.slotDate)} |  {item.slotTime}</p>
+                            <p className='mt-1'>
+                                <span className='text-sm text-[#3C3C3C] font-medium'>
+                                    Date & Time:
+                                </span>
+                                {" "}
+                                {formatSlotDate(item.slotDate)} | {item.slotTime}
+                            </p>
                         </div>
                         <div></div>
                         <div className='flex flex-col gap-2 justify-end text-sm text-center'>
@@ -147,7 +163,7 @@ const MyAppointments = () => {
                             {!item.cancelled && !item.payment && !item.isCompleted && payment === item._id && <button onClick={() => appointmentRazorpay(item._id)} className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-gray-100 hover:text-white transition-all duration-300 flex items-center justify-center'><img className='max-w-20 max-h-5' src={assets.razorpay_logo} alt="" /></button>}
                             {!item.cancelled && item.payment && !item.isCompleted && <button className='sm:min-w-48 py-2 border rounded text-[#696969]  bg-[#EAEFFF]'>Paid</button>}
 
-                            
+
                             {item.isCompleted && <button className='sm:min-w-48 py-2 border border-green-500 rounded text-green-500'>Download</button>}
                             {item.isCompleted && <p className='sm:min-w-48 py-2 text-black-500'>Vaccination Completed</p>}
 

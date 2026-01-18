@@ -1,6 +1,5 @@
 import React, { useContext } from 'react'
 import { assets } from '../assets/assets'
-import { DoctorContext } from '../context/DoctorContext'
 import { AdminContext } from '../context/AdminContext'
 import { useNavigate } from 'react-router-dom'
 import { HospitalContext } from '../context/HospitalContext'

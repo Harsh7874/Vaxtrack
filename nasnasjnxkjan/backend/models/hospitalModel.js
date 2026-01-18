@@ -23,8 +23,14 @@ const hospitalSchema = new mongoose.Schema({
             type: [Number], // [longitude, latitude]
             required: true
         }
-    }
-    
+    },
+    vaccines:[{
+        vaccineName: { type: String, required: true },
+        vaccineId: { type: mongoose.Schema.Types.ObjectId, ref: 'vaccine' },
+        quantity: { type: Number, required: true },
+        price: { type: Number, required: true},
+        _id:false
+    }],
 
 }, 
 

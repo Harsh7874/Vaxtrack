@@ -19,22 +19,7 @@ const AdminContextProvider = (props) => {
 
 
 //---------------------------------------------------------------------Get all hospitals-------------------------------------------------------------//
-        const getAllHospitals = async () => {
-
-        try {
-
-            const { data } = await axios.get(backendUrl + '/api/admin/all-hospitals', { headers: { aToken } })
-            if (data.success) {
-                setHospitals(data.hospitals)
-            } else {
-                toast.error(data.message)
-            }
-
-        } catch (error) {
-            toast.error(error.message)
-        }
-
-    }
+     
 
 
     //GEt All vaccines
@@ -141,7 +126,6 @@ const AdminContextProvider = (props) => {
         aToken, setAToken,
         hospitals,
         vaccines,
-        getAllHospitals,
         changeAvailability,
         appointments,
         getAllAppointments,

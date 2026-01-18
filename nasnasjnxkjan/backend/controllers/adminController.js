@@ -5,8 +5,8 @@ import { v2 as cloudinary } from "cloudinary";
 import userModel from "../models/userModel.js";
 import hospitalModel from "../models/hospitalModel.js";
 import vaccineModel from "../models/vaccineModel.js";
-import quantityModel from "../models/hospitalQuantModel.js";
 import appointmentModel from "../models/appointmentModel.js";
+import requestModel from "../models/requestModel.js";
 
 // API for admin login
 const loginAdmin = async (req, res) => {
@@ -32,17 +32,129 @@ const loginAdmin = async (req, res) => {
 
 // API to get all appointments list
 const appointmentAdmin = async (req, res) => {
-    try {
+  try {
+    const {
+      pageNo = 1,
+      limit = 10,
+      startDate,
+      endDate,
+      isCompleted,
+      cancelled,
+    } = req.query;
 
-        const appointment = await appointmentModel.find({})
-        res.json({ success: true, appointment })
+    const page = parseInt(pageNo);
+    const pageLimit = parseInt(limit);
+    const skip = (page - 1) * pageLimit;
 
-    } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+    const filter = {};
+
+    // ===============================
+    // 1️⃣ DATE FILTER (CORRECT)
+    // ===============================
+    if (startDate || endDate) {
+  filter.slotDate = {};
+
+  if (startDate) {
+    const start = new Date(startDate);
+    
+    // 👉 Convert to UTC start of day
+    const utcStart = new Date(
+      Date.UTC(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate(),
+        0, 0, 0, 0
+      )
+    );
+
+    filter.slotDate.$gte = utcStart;
+  }
+
+  if (endDate) {
+    const end = new Date(endDate);
+
+    // 👉 Convert to UTC end of day
+    const utcEnd = new Date(
+      Date.UTC(
+        end.getFullYear(),
+        end.getMonth(),
+        end.getDate(),
+        23, 59, 59, 999
+      )
+    );
+
+    filter.slotDate.$lte = utcEnd;
+  }
+}
+
+
+    // ===============================
+    // 2️⃣ BOOLEAN FIX (MAIN BUG)
+    // ===============================
+
+    if (isCompleted !== undefined) {
+      filter.isCompleted = isCompleted === "true";
     }
 
-}
+    if (cancelled !== undefined) {
+      filter.cancelled = cancelled === "true";
+    }
+
+    console.log("FINAL FILTER:", filter);   // 👈 debug
+
+    // ===============================
+    // 3️⃣ QUERY
+    // ===============================
+
+    const totalAppointments =
+      await appointmentModel.countDocuments(filter);
+
+    const totalPages = Math.ceil(
+      totalAppointments / pageLimit
+    );
+
+    const appointments = await appointmentModel
+      .find(filter)
+      .sort({ slotDate: 1 })
+      .skip(skip)
+      .limit(pageLimit)
+      .lean();
+
+    res.json({
+      success: true,
+      appointments,
+
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalAppointments,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+        limit: pageLimit,
+      },
+
+      filters: {
+        startDate: startDate || null,
+        endDate: endDate || null,
+        isCompleted:
+          isCompleted !== undefined
+            ? isCompleted === "true"
+            : null,
+        cancelled:
+          cancelled !== undefined
+            ? cancelled === "true"
+            : null,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 
 // API for appointment cancellation
 const appointmentCancel = async (req, res) => {
@@ -63,7 +175,7 @@ const appointmentCancel = async (req, res) => {
 
 const addHospital = async (req, res) => {
     try {
-        const { name, email, password, about, address, longitude, latitude } = req.body;
+        const { name, email, password, about, address, longitude, latitude,vaccineData } = req.body;
         const imageFile = req.file;
 
         // Check for all required data
@@ -111,6 +223,7 @@ const addHospital = async (req, res) => {
             image: imageUrl,
             password: hashedPassword,
             about,
+            vaccines:JSON.parse( vaccineData),
             address: parsedAddress,
             location: {
                 type: 'Point',
@@ -211,60 +324,330 @@ const allVaccines = async (req, res) => {
 
 // API to get dashboard data for admin panel
 const adminDashboard = async (req, res) => {
-    try {
+  try {
+    const { date, page = 1, limit = 10 } = req.body;
 
-        const hospitals = await hospitalModel.find({})
-        const users = await userModel.find({})
-        const appointments = await appointmentModel.find({})
-
-        const dashData = {
-            hospitals: hospitals.length,
-            appointments: appointments.length,
-            patients: users.length,
-            latestAppointments: appointments.reverse()
-        }
-
-        res.json({ success: true, dashData })
-
-    } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+    // Validate and prepare date filter
+    let dateFilter = {};
+    if (date && typeof date === 'string') {
+      // Assuming input date format is also "DD_MM_YYYY" like "17_1_2026"
+      // We want appointments where slotDate > given date
+      dateFilter.slotDate = { $gt: date };
     }
-}
+
+    // Get total counts (unchanged)
+    const hospitalsCount = await hospitalModel.countDocuments({});
+    const usersCount = await userModel.countDocuments({});
+
+    // Get total number of future/relevant appointments for pagination info
+    const totalAppointments = await appointmentModel.countDocuments({isCompleted:true});
+
+    // Calculate skip for pagination
+    const skip = (page - 1) * limit;
+
+    // Fetch paginated appointments - newest first
+    // Assuming you want latest created/booked appointments first
+    // (If you want to sort by slotDate instead, see alternative below)
+    const appointments = await appointmentModel
+      .find(dateFilter).sort({ slotDate: -1 })   // ← uncomment if you want newest date first
+      .skip(skip)
+      .limit(Number(limit))
+      .lean();
+
+    const dashData = {
+      hospitals: hospitalsCount,
+      patients: usersCount,
+      totalAppointments,           // total matching the filter (for pagination)
+      currentPage: Number(page),
+      totalPages: Math.ceil(totalAppointments / limit),
+      limit: Number(limit),
+      latestAppointments: appointments,
+    };
+
+    res.json({ success: true, dashData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 
 //--------------------------------------------------------Vaccine Quantity selection------------------------------------------------------------//
 
-const newquantity = async (req, res) => {
-  const { hospital, vaccine, price, quantity } = req.body;
+
+
+// Update vaccine details & availability
+
+
+
+
+
+
+export const updateHospitalVaccine = async (req, res) => {
   try {
-    const hospitalVaccines = new quantityModel({ hospital, vaccine, price, quantity });
-    await hospitalVaccines.save();
-    res.status(201).json(hospitalVaccines);
+    const { hospitalId } = req.params;
+    const { vaccineId, quantity, price, available, remove } = req.body;
+
+    if (!hospitalId) {
+      return res.status(400).json({
+        success: false,
+        message: "Hospital ID is required",
+      });
+    }
+
+    // ---- Handle remove vaccine ----
+    if (vaccineId && remove === true) {
+      const hospital = await hospitalModel.findByIdAndUpdate(
+        hospitalId,
+        {
+          $pull: { vaccines: { vaccineId } },
+        },
+        { new: true }
+      );
+      if (!hospital) {
+        return res.status(404).json({
+          success: false,
+          message: "Hospital not found",
+        });
+      }
+      return res.json({
+        success: true,
+        message: "Vaccine removed successfully",
+        data: hospital,
+      });
+    }
+
+    // ---- Update availability only ----
+    if (available !== undefined && !vaccineId) {
+      const hospital = await hospitalModel.findByIdAndUpdate(
+        hospitalId,
+        { available },
+        { new: true }
+      );
+      return res.json({
+        success: true,
+        message: "Availability updated",
+        data: hospital,
+      });
+    }
+
+    // ---- Update or add vaccine ----
+    if (!vaccineId) {
+      return res.status(400).json({
+        success: false,
+        message: "Vaccine ID is required for vaccine operations",
+      });
+    }
+
+    const updateResult = await hospitalModel.updateOne(
+      {
+        _id: hospitalId,
+        "vaccines.vaccineId": vaccineId,
+      },
+      {
+        $set: {
+          "vaccines.$.quantity": quantity,
+          "vaccines.$.price": price,
+        },
+      }
+    );
+
+    if (updateResult.modifiedCount > 0) {
+      const hospital = await hospitalModel.findById(hospitalId);
+      return res.json({
+        success: true,
+        message: "Vaccine updated successfully",
+        data: hospital,
+      });
+    } else {
+      // Add new vaccine
+      const vaccine = await vaccineModel.findById(vaccineId);
+      if (!vaccine) {
+        return res.status(404).json({
+          success: false,
+          message: "Vaccine not found",
+        });
+      }
+      const hospital = await hospitalModel.findByIdAndUpdate(
+        hospitalId,
+        {
+          $push: {
+            vaccines: {
+              vaccineName: vaccine.name,
+              vaccineId: vaccine._id,
+              quantity,
+              price,
+            },
+          },
+        },
+        { new: true }
+      );
+      if (!hospital) {
+        return res.status(404).json({
+          success: false,
+          message: "Hospital not found",
+        });
+      }
+      res.json({
+        success: true,
+        message: "Vaccine added successfully",
+        data: hospital,
+      });
+    }
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-const hospitalVaccine = async (req, res) => {
+
+
+export const approveRejectRequest = async (req, res) => {
   try {
-    const hospitalVaccines = await quantityModel.find({ hospital: req.params.hospitalId }).populate('vaccine');
-    res.json(hospitalVaccines);
+    const { requestId, status } = req.body;
+    // status: true = approve , false = reject
+
+    if (!requestId || typeof status !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "requestId and status required",
+      });
+    }
+
+    // 1️⃣ Get request
+    const request = await requestModel.findById(requestId);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Request not found",
+      });
+    }
+
+    // If already processed
+    if (request.processed) {
+      return res.status(400).json({
+        success: false,
+        message: "Request already processed",
+      });
+    }
+
+    // =========================
+    // ❌ REJECT FLOW
+    // =========================
+    if (status === false) {
+      request.status = false;
+      request.processed = true;
+      await request.save();
+
+      return res.json({
+        success: true,
+        message: "Request rejected",
+      });
+    }
+
+    // =========================
+    // ✅ APPROVE FLOW
+    // =========================
+
+    const hospital = await hospitalModel.findById(request.hospitalId);
+
+    if (!hospital) {
+      return res.status(404).json({
+        success: false,
+        message: "Hospital not found",
+      });
+    }
+
+    // 2️⃣ Update hospital inventory
+    for (let item of request.vaccines) {
+      const existingIndex = hospital.vaccines.findIndex(
+        (v) => v.vaccineId.toString() === item.vaccineId.toString()
+      );
+
+      if (existingIndex > -1) {
+        // 👉 Vaccine exists → ADD quantity only
+        hospital.vaccines[existingIndex].quantity += Number(item.quantity);
+
+      } else {
+        // 👉 New vaccine → PUSH
+        hospital.vaccines.push({
+          vaccineName: item.vaccineName,
+          vaccineId: item.vaccineId,
+          quantity: Number(item.quantity),
+          price: Number(item.price),
+        });
+      }
+    }
+
+    await hospital.save();
+
+    // 3️⃣ Update request status
+    request.status = true;
+    request.processed = true;
+    await request.save();
+
+    res.json({
+      success: true,
+      message: "Request approved & inventory updated",
+    });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-const vaccineupdate =async (req, res) => {
-  const { price, quantity } = req.body;
+
+export const listRequestsAdmin = async (req, res) => {
   try {
-    const HospitalQuantityUpdate = await quantityModel.findByIdAndUpdate(req.params.id, { price, quantity }, { new: true });
-    res.json(HospitalQuantityUpdate);
+    let { page = 1, limit = 10, status } = req.query;
+
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    const query = {};
+
+    // status filter: true / false / pending
+    if (status === "approved") query.status = true;
+    if (status === "rejected") query.status = false;
+    if (status === "pending") query.processed = false;
+
+    const requests = await requestModel
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    const total = await requestModel.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: requests,
+
+      pagination: {
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+        limit,
+      },
+    });
+
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
+
 
 export {
     loginAdmin,
@@ -275,8 +658,5 @@ export {
     addVaccine,
     allVaccines,
     adminDashboard,
-   newquantity,
-   vaccineupdate,
-   hospitalVaccine,
    changeAvailablity
 }

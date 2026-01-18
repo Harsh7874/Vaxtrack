@@ -16,11 +16,11 @@ const HospitalContextProvider = (props) => {
     // Fetch vaccine inventory
     const getInventory = async () => {
         try {
-            const { data } = await axios.get(backendUrl + '/api/hospitalb/listing', {
+            const { data } = await axios.get(backendUrl + '/api/hospital/hospital-inventory', {
                 headers: { hToken }
             });
             if (data.success) {
-                setInventory(data.vaccines);
+                setInventory(data.inventory);
             } else {
                 toast.error(data.message);
             }

@@ -4,7 +4,7 @@ import React, { useContext, useState } from 'react'
 import { HospitalContext } from '../context/HospitalContext'
 import { AdminContext } from '../context/AdminContext'
 import { toast } from 'react-toastify'
-
+import { useNavigate } from 'react-router-dom'
 const Login = () => {
 
   const [state, setState] = useState('Admin')
@@ -14,11 +14,11 @@ const Login = () => {
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL
 
-  // const { setDToken } = useContext(DoctorContext)
     const { setHToken } = useContext(HospitalContext)
 
 
   const { setAToken } = useContext(AdminContext)
+const navigate = useNavigate();
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
@@ -29,6 +29,7 @@ const Login = () => {
       if (data.success) {
         setAToken(data.token)
         localStorage.setItem('aToken', data.token)
+        navigate('/admin-dashboard')
       } else {
         toast.error(data.message)
       }
@@ -39,6 +40,8 @@ const Login = () => {
       if (data.success) {
         setHToken(data.token)
         localStorage.setItem('hToken', data.token)
+        navigate('/hospital-dashboard')
+
       } else {
         toast.error(data.message)
       }

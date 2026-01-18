@@ -7,7 +7,7 @@ import userRouter from "./routes/userRoute.js"
 import adminRouter from "./routes/adminRoute.js"
 import hospitalRouter from "./routes/hospitalRoute.js"
 import vaccineRouter from "./routes/vaccineRoute.js"
-
+import publicRoutes from "./routes/publicRoutes.js"
 // app config
 const app = express()
 const port = process.env.PORT || 4000
@@ -23,6 +23,7 @@ app.use("/api/user", userRouter)
 app.use("/api/admin", adminRouter)
 app.use("/api/hospital", hospitalRouter)
 app.use("/api/vaccine", vaccineRouter)
+app.use("/api/public", publicRoutes)
 
 
 

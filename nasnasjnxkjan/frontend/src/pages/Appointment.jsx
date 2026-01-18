@@ -14,9 +14,8 @@ const Loader = () => (
 
 const Appointment = () => {
   const { hospitalId } = useParams();
-  const { hospitals, currencySymbol, backendUrl, token, getHospitalsData } = useContext(AppContext);
+  const { currencySymbol, backendUrl, token } = useContext(AppContext);
   const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-
   const [hospitalInfo, setHospitalInfo] = useState(null);
   const [hospitalSlots, setHospitalSlots] = useState([]);
   const [slotIndex, setSlotIndex] = useState(0);
@@ -24,44 +23,41 @@ const Appointment = () => {
   const [availableVaccines, setAvailableVaccines] = useState([]);
   const [selectedVaccine, setSelectedVaccine] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const navigate = useNavigate();
 
-  const fetchHospitalInfo = async () => {
-    const found = hospitals.find(h => h._id === hospitalId);
-    setHospitalInfo(found);
-  };
+const fetchHospitalInfo = async () => {
+  try {
+    const { data } = await axios.get(
+      `${backendUrl}/api/user/get-hospital/${hospitalId}`
+    );
 
-  const fetchVaccines = async () => {
-    try {
-      const response = await axios.get(`${backendUrl}/api/admin/all-hospitals/${hospitalId}`);
-      const vaccines = response.data
-        .map(hv => ({
-          vaccineId: hv.vaccine._id,
-          vaccineName: hv.vaccine.name,
-          quantity: hv.quantity,
-          price: hv.price,
-        }))
-        .filter(v => v.quantity > 0);
-      setAvailableVaccines(vaccines);
-    } catch (error) {
-      console.error('Error fetching vaccines:', error);
-      toast.error('Failed to load vaccines');
+    if (data.success) {
+      setHospitalInfo(data.hospitalData);
+
+      const vaccines = data.hospitalData?.vaccines || [];
+      setAvailableVaccines(vaccines.filter(v => v.quantity > 0));
+
+    } else {
+      toast.error(data.message);
     }
-  };
+  } catch (error) {
+    console.log('Error fetching hospital info:', error);
+    toast.error('Failed to load hospital info');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const getAvailableSlots = async () => {
     setHospitalSlots([]);
     const today = new Date();
-
     for (let i = 0; i < 7; i++) {
       let currentDate = new Date(today);
       currentDate.setDate(today.getDate() + i);
-
       let endTime = new Date(today);
       endTime.setDate(today.getDate() + i);
       endTime.setHours(21, 0, 0, 0);
-
       if (today.getDate() === currentDate.getDate()) {
         currentDate.setHours(currentDate.getHours() > 10 ? currentDate.getHours() + 1 : 10);
         currentDate.setMinutes(currentDate.getMinutes() > 30 ? 30 : 0);
@@ -69,39 +65,33 @@ const Appointment = () => {
         currentDate.setHours(10);
         currentDate.setMinutes(0);
       }
-
       let timeSlots = [];
-
       while (currentDate < endTime) {
-        let formattedTime = currentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let formattedTime = currentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toLowerCase();
         let day = currentDate.getDate();
         let month = currentDate.getMonth() + 1;
         let year = currentDate.getFullYear();
-        const slotDate = `${day}_${month}_${year}`;
+        const slotDateKey = new Date(
+          year,
+          month - 1,
+          day
+        ).toISOString();
         const MAX_USERS_PER_SLOT = 10;
-
-        const bookedSlotsForDay = hospitalInfo?.slots_booked?.[slotDate] || [];
-
+        const bookedSlotsForDay = hospitalInfo?.slots_booked?.[slotDateKey] || [];
         const slotInfo = bookedSlotsForDay.find(s => s.time === formattedTime);
-
         const bookedCount = slotInfo ? slotInfo.nuser : 0;
         const remaining = MAX_USERS_PER_SLOT - bookedCount;
-
         const isSlotAvailable = remaining > 0;
-
-       if (isSlotAvailable) {
-  timeSlots.push({
-    datetime: new Date(currentDate),
-    time: formattedTime,
-    booked: bookedCount,
-    remaining: remaining
-  });
-}
-
-
+        if (isSlotAvailable) {
+          timeSlots.push({
+            datetime: new Date(currentDate),
+            time: formattedTime,
+            booked: bookedCount,
+            remaining: remaining
+          });
+        }
         currentDate.setMinutes(currentDate.getMinutes() + 30);
       }
-
       setHospitalSlots(prev => [...prev, timeSlots]);
     }
   };
@@ -111,23 +101,20 @@ const Appointment = () => {
       toast.warning('Login to book appointment');
       return navigate('/login');
     }
-
     if (!selectedVaccine) {
       toast.warning('Please select a vaccine');
       return;
     }
-
     if (!slotTime) {
       toast.warning('Please select a time slot');
       return;
     }
-
     const date = hospitalSlots[slotIndex][0].datetime;
-    const day = date.getDate();
-    const month = date.getMonth() + 1;
-    const year = date.getFullYear();
-    const slotDate = `${day}_${month}_${year}`;
-
+    const slotDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
     const appointmentData = {
       hospitalId,
       slotDate,
@@ -136,19 +123,16 @@ const Appointment = () => {
       vaccinePrice: selectedVaccine.price,
       vaccineName: selectedVaccine.vaccineName,
     };
-
     console.log('Booking Appointment Data:', appointmentData);
-
     try {
       const { data } = await axios.post(
         `${backendUrl}/api/user/book-appointment`,
         appointmentData,
         { headers: { token } }
       );
-
       if (data.success) {
         toast.success(data.message);
-        getHospitalsData();
+fetchHospitalInfo()
         // navigate('/my-appointments');
       } else {
         toast.error(data.message);
@@ -160,14 +144,8 @@ const Appointment = () => {
   };
 
   useEffect(() => {
-    if (hospitals.length > 0) {
-      fetchHospitalInfo();
-    }
-  }, [hospitals, hospitalId]);
-
-  useEffect(() => {
     if (hospitalId) {
-      fetchVaccines();
+      fetchHospitalInfo();
     }
   }, [hospitalId]);
 
@@ -199,7 +177,6 @@ const Appointment = () => {
           </div>
         </div>
       </div>
-
       {/* ---------- Vaccine Selection Slider ---------- */}
       <div className='sm:ml-72 sm:pl-4 mt-8 font-medium text-[#565656]'>
         <p className='text-lg'>Select Vaccine</p>
@@ -210,8 +187,8 @@ const Appointment = () => {
                 key={index}
                 onClick={() => setSelectedVaccine(vaccine)}
                 className={`text-center py-4 px-6 min-w-32 rounded-full cursor-pointer ${selectedVaccine && selectedVaccine.vaccineId === vaccine.vaccineId
-                    ? 'bg-primary text-white'
-                    : 'border border-[#DDDDDD]'
+                  ? 'bg-primary text-white'
+                  : 'border border-[#DDDDDD]'
                   }`}
               >
                 <p>{vaccine.vaccineName}</p>
@@ -228,7 +205,6 @@ const Appointment = () => {
           </p>
         )}
       </div>
-
       {/* ---------- Booking Slots ---------- */}
       <div className='sm:ml-72 sm:pl-4 mt-8 font-medium text-[#565656]'>
         <p>Booking Slots</p>
@@ -249,25 +225,23 @@ const Appointment = () => {
         <div className='flex items-center gap-3 w-full overflow-x-scroll mt-4'>
           {hospitalSlots.length > 0 &&
             hospitalSlots[slotIndex]?.map((item, index) => (
-           <div
-  key={index}
-  onClick={() => setSlotTime(item.time)}
-  className={`text-sm flex-shrink-0 px-5 py-2 rounded-full cursor-pointer border
-    ${
-      item.time === slotTime
-        ? 'bg-primary text-white border-primary'
-        : 'text-[#949494] border-[#B4B4B4]'
-    }
+              <div
+                key={index}
+                onClick={() => setSlotTime(item.time)}
+                className={`text-sm flex-shrink-0 px-5 py-2 rounded-full cursor-pointer border
+    ${item.time === slotTime
+                    ? 'bg-primary text-white border-primary'
+                    : 'text-[#949494] border-[#B4B4B4]'
+                  }
   `}
->
-  <div className="text-center leading-tight">
-    <p>{item.time.toLowerCase()}</p>
-    <p className="text-[11px] opacity-80">
-      {item.remaining} / 10 left
-    </p>
-  </div>
-</div>
-
+              >
+                <div className="text-center leading-tight">
+                  <p>{item.time.toLowerCase()}</p>
+                  <p className="text-[11px] opacity-80">
+                    {item.remaining} / 10 left
+                  </p>
+                </div>
+              </div>
             ))}
         </div>
         <button

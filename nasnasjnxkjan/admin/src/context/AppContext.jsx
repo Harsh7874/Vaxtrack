@@ -12,9 +12,20 @@ const AppContextProvider = (props) => {
 
     // Function to format the date eg. ( 20_01_2000 => 20 Jan 2000 )
     const slotDateFormat = (slotDate) => {
-        const dateArray = slotDate.split('_')
-        return dateArray[0] + " " + months[Number(dateArray[1])] + " " + dateArray[2]
-    }
+        if (!slotDate) return "";
+
+        const date = new Date(slotDate);
+
+        if (isNaN(date)) return String(slotDate);
+
+        const months = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        ];
+
+        return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    };
+
 
     // Function to calculate the age eg. ( 20_01_2000 => 24 )
     const calculateAge = (dob) => {

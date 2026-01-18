@@ -6,7 +6,7 @@ const appointmentSchema = new mongoose.Schema({
     vaccineId:{ type: String, required: true },
     vaccinePrice:{ type: String, required: true },
     vaccineName:{ type: String, required: true },
-    slotDate: { type: String, required: true },
+    slotDate: { type: Date, required: true },
     slotTime: { type: String, required: true },
     userData: { type: Object, required: true },
     hospitalData: { type: Object, required: true },

@@ -4,7 +4,7 @@ export async function uploadPdfToSupabase(buffer, appointmentId) {
   const fileName = `${appointmentId}.pdf`;
 
   const { error } = await supabase.storage
-    .from("certificates")
+    .from("HealthCare")
     .upload(fileName, buffer, {
       contentType: "application/pdf",
       upsert: true
@@ -13,7 +13,7 @@ export async function uploadPdfToSupabase(buffer, appointmentId) {
   if (error) throw error;
 
   const { data } = supabase.storage
-    .from("certificates")
+    .from("HealthCare")
     .getPublicUrl(fileName);
 
   return data.publicUrl;
