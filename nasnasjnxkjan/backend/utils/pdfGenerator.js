@@ -29,20 +29,24 @@ export async function generateCertificatePDF(data, qrPayload) {
     doc.fontSize(12);
 
     doc.text(`Appointment ID: ${data._id}`);
-    doc.text(`Hospital: ${data.hospitalName}`);
+    doc.text(`Hospital: ${data.hospitalData.name}`);
     doc.text(`Vaccine: ${data.vaccineName}`);
     doc.text(`Price: ₹${data.vaccinePrice}`);
 
     doc.moveDown();
-
-    doc.text(`Date: ${data.slotDate}`);
+ const istTime = new Date(data.slotDate).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata"
+    });
+    doc.text(`Date: ${istTime}`);
     doc.text(`Time: ${data.slotTime}`);
 
     doc.moveDown();
 
     doc.text("Beneficiary Details");
+   
     doc.text(`Name: ${data.userData?.name}`);
-    doc.text(`Address: ${data.userData?.address}`);
+    doc.text(`Address: ${data.userData?.address?.line1}`);
+    doc.text(`       : ${data.userData?.address?.line2}`);
 
     doc.moveDown();
     doc.text("Status: Vaccination Completed");

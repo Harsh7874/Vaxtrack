@@ -5,50 +5,12 @@ import appointmentModel from "../models/appointmentModel.js";
 import PDFDocument from "pdfkit";
 import nodemailer from "nodemailer";
 import requestModel from "../models/requestModel.js";
-import {createVaccinationCertificate} from '../utils/createCerti.js'
-
+import { createVaccinationCertificate } from '../utils/createCerti.js'
+import { sendEmail } from "../utils/sendEmail.js";
 //---------------------------------------------------------------------Nodemailertreansport--------------//
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+import { vaccinationEmailTemplate } from "../utils/sendEmail.js";
 
-const generateCertificate = async (appointment) => {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument();
-    const buffers = [];
 
-    doc.on('data', buffers.push.bind(buffers));
-    doc.on('end', () => {
-      const pdfBuffer = Buffer.concat(buffers);
-      resolve(pdfBuffer);
-    });
-    doc.on('error', reject);
-
-    // Certificate content
-    doc.fontSize(20).text('Vaccination Certificate', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(14).text(`User: ${appointment.userData.name}`);
-    doc.text(`Hospital: ${appointment.hospitalData.name}`);
-
-    // Format the date from "dd_mm_yyyy" to "DD Month YYYY"
-    const [day, month, year] = appointment.slotDate.split('_');
-    const date = new Date(year, month - 1, day);
-    const formattedDate = date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    doc.text(`Date: ${formattedDate}`);
-    doc.text(`Time: ${appointment.slotTime}`);
-    doc.text(`Vaccine: ${appointment.vaccineName}`);
-
-    doc.end();
-  });
-};
 
 
 // API for doctor Login 
@@ -172,15 +134,15 @@ const appointmentComplete = async (req, res) => {
         message: "Appointment not found or Unauthorized",
       });
     }
-const certResult = await createVaccinationCertificate(appointmentData);
+    const certResult = await createVaccinationCertificate(appointmentData);
 
-if (!certResult.success) {
-  return res.json({
-    success: false,
-    message: "Certificate generation failed",
-    error: certResult.error
-  });
-}
+    if (!certResult.success) {
+      return res.json({
+        success: false,
+        message: "Certificate generation failed",
+        error: certResult.error
+      });
+    }
 
     // 2️⃣ Mark as completed
     await appointmentModel.findByIdAndUpdate(
@@ -188,29 +150,22 @@ if (!certResult.success) {
       { isCompleted: true }
     );
 
-    // 3️⃣ Generate & Email Certificate
-    // const pdfBuffer = await generateCertificate(appointmentData);
+    if (certResult.success) {
 
-    const userEmail = appointmentData.userData.email;
+      const emailHtml = vaccinationEmailTemplate({
+        name: appointmentData.userData.name,
+        vaccine: appointmentData.vaccineName,
+        downloadUrl: certResult.url,
+      });
+      let email = appointmentData?.userData.email || "null"
+      await sendEmail({
+        to: email,
+        subject: "Your Vaccination Certificate",
+        html: emailHtml,
+      }).then((info)=>{console.log("Email Send ",info)});
+    }
 
-    // const mailOptions = {
-    //   from: process.env.EMAIL_USER,
-    //   to: userEmail,
-    //   subject: "Your Vaccination Certificate",
-    //   text:
-    //     "Dear " +
-    //     appointmentData.userData.name +
-    //     ",\n\nPlease find attached your vaccination certificate.\n\nBest regards,\nYour Hospital Team",
-    //   attachments: [
-    //     {
-    //       filename: "certificate.pdf",
-    //       content: pdfBuffer,
-    //       contentType: "application/pdf",
-    //     },
-    //   ],
-    // };
 
-    // await transporter.sendMail(mailOptions);
 
     // ===============================
     // ✅ FEATURE 2: DEDUCT VACCINE
