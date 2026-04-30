@@ -13,13 +13,36 @@ const AddHospital = () => {
     const [about, setAbout] = useState('');
     const [address1, setAddress1] = useState('');
     const [address2, setAddress2] = useState('');
-    const [longitude, setLongitude] = useState('');
+    const [longitude, setLongitude] = useState(''); 
     const [latitude, setLatitude] = useState('');
     const [vaccines, setVaccines] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+const [suggestions, setSuggestions] = useState([]);
     const [selectedVaccines, setSelectedVaccines] = useState([]);
     const { backendUrl } = useContext(AppContext);
     const { aToken } = useContext(AdminContext);
+const fetchSuggestions = async (query) => {
+    if (!query) return setSuggestions([]);
 
+    try {
+        const res = await axios.get(
+            `https://photon.komoot.io/api/?q=${query}&limit=5`
+        );
+
+        const results = res.data.features.map((item) => ({
+            name: item.properties.name,
+            city: item.properties.city,
+            state: item.properties.state,
+            country: item.properties.country,
+            lat: item.geometry.coordinates[1],
+            lon: item.geometry.coordinates[0],
+        }));
+
+        setSuggestions(results);
+    } catch (error) {
+        console.log(error);
+    }
+};
     useEffect(() => {
         const fetchVaccines = async () => {
             try {
@@ -115,8 +138,51 @@ const AddHospital = () => {
             console.log(error);
         }
     };
+    const handleSelect = (item) => {
+    setName(item.name || '');
+    setAddress1(`${item.city || ''}, ${item.state || ''}`);
+    setAddress2(item.country || '');
+    setLatitude(item.lat);
+    setLongitude(item.lon);
 
-    return (
+    setSearchQuery(item.name || '');
+    setSuggestions([]);
+};
+
+    return (<div className="m-5 w-full max-w-4xl mx-auto">
+        {/* SEARCH BAR FULL WIDTH */}
+        <div className="w-full mb-4 relative">
+            <p className="mb-1">Search Hospital (Auto-fill)</p>
+
+            <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    fetchSuggestions(e.target.value);
+                }}
+                className="border rounded px-4 py-3 w-full"
+                placeholder="Search hospital..."
+            />
+
+            {/* DROPDOWN */}
+            {suggestions.length > 0 && (
+                <div className="absolute w-full bg-white border rounded shadow z-10 max-h-60 overflow-y-auto">
+                    {suggestions.map((item, index) => (
+                        <div
+                            key={index}
+                            className="px-4 py-3 hover:bg-gray-100 cursor-pointer"
+                            onClick={() => handleSelect(item)}
+                        >
+                            <p className="font-medium">{item.name || "Unnamed"}</p>
+                            <p className="text-sm text-gray-500">
+                                {item.city}, {item.state}, {item.country}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
         <form onSubmit={onSubmitHandler} className="m-5 w-full">
             <p className="mb-3 text-lg font-medium">Add Hospital</p>
             <div className="bg-white px-8 py-8 border rounded w-full max-w-4xl max-h-[80vh] overflow-y-scroll">
@@ -279,6 +345,7 @@ const AddHospital = () => {
                 </button>
             </div>
         </form>
+        </div>
     );
 };
 
