@@ -15,7 +15,33 @@ const Navbar = () => {
     setToken(false)
     navigate('/login')
   }
+  const VerifyNavButton = () => {
+    return (
+      <NavLink to="/verify-certi">
+        {({ isActive }) => (
+          <li
+            className={`
+            list-none px-4 py-2 rounded-md font-semibold transition-all duration-200
+            border border-blue-600
 
+            ${isActive
+                ? "bg-white text-blue-600"
+                : "bg-blue-600 text-white hover:bg-white hover:text-blue-600"
+              }
+          `}
+          >
+            Verify Certificate
+
+            {/* Active underline like your HOME link */}
+            <hr
+              className={`border-none outline-none h-0.5 bg-blue-600 w-3/5 m-auto ${isActive ? "block" : "hidden"
+                }`}
+            />
+          </li>
+        )}
+      </NavLink>
+    );
+  };
   return (
     <div className='flex items-center justify-between text-sm py-4 mb-5 border-b border-b-[#ADADAD]'>
       <img onClick={() => navigate('/')} className='w-44 cursor-pointer' src={assets.logo} alt="" />
@@ -43,7 +69,12 @@ const Navbar = () => {
       </ul>
 
       <div className='flex items-center gap-4 '>
+        <div className="hidden md:block">
+          <VerifyNavButton />
+        </div>
+
         {
+
           token && userData
             ? <div className='flex items-center gap-2 cursor-pointer group relative'>
               <img className='w-8 rounded-full' src={userData.image} alt="" />
@@ -56,6 +87,7 @@ const Navbar = () => {
                 </div>
               </div>
             </div>
+
             : <button onClick={() => navigate('/login')} className='bg-primary text-white px-8 py-3 rounded-full font-light hidden md:block'>Create account</button>
         }
         <img onClick={() => setShowMenu(true)} className='w-6 md:hidden' src={assets.menu_icon} alt="" />
@@ -67,11 +99,26 @@ const Navbar = () => {
             <img onClick={() => setShowMenu(false)} src={assets.cross_icon} className='w-7' alt="" />
           </div>
           <ul className='flex flex-col items-center gap-2 mt-5 px-5 text-lg font-medium'>
+            {!token && (
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  navigate('/login');
+                }}
+                className="bg-primary text-white px-6 py-2 rounded-full mt-3"
+              >
+                Create Account
+              </button>
+            )}
+
             <NavLink onClick={() => setShowMenu(false)} to='/'><p className='px-4 py-2 rounded full inline-block'>HOME</p></NavLink>
-            <NavLink onClick={() => setShowMenu(false)} to='/hospitals' ><p className='px-4 py-2 rounded full inline-block'>ALL DOCTORS</p></NavLink>
+            <NavLink onClick={() => setShowMenu(false)} to='/hospitals' ><p className='px-4 py-2 rounded full inline-block'>ALL HOSPITALS</p></NavLink>
             <NavLink onClick={() => setShowMenu(false)} to='/hospitals' ><p className='px-4 py-2 rounded full inline-block'>ALL VACCINE</p></NavLink>
             <NavLink onClick={() => setShowMenu(false)} to='/about' ><p className='px-4 py-2 rounded full inline-block'>ABOUT</p></NavLink>
             <NavLink onClick={() => setShowMenu(false)} to='/contact' ><p className='px-4 py-2 rounded full inline-block'>CONTACT</p></NavLink>
+            
+            <VerifyNavButton />
+
           </ul>
         </div>
       </div>

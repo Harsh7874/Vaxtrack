@@ -9,14 +9,13 @@ const MyAppointments = () => {
 
     const { backendUrl, token } = useContext(AppContext)
     const navigate = useNavigate()
-
+    const [cancelLoading, setCancelLoading] = useState(null);
     const [appointments, setAppointments] = useState([])
     const [payment, setPayment] = useState('')
 
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
     // Function to format the date eg. ( 20_01_2000 => 20 Jan 2000 )
-
     const formatSlotDate = (slotDate) => {
         if (!slotDate) return "";
 
@@ -31,13 +30,49 @@ const MyAppointments = () => {
         return `${day} ${month} ${year}`;
     };
 
+    // Function to download PDF from Supabase URL
+    const downloadPDF = async (certiUrl, vaccineName, userName) => {
+        try {
+            const fileName = `${userName}_${vaccineName}_vaccine_certificate.pdf`;
+
+            // Fetch the file as blob
+            const response = await fetch(certiUrl);
+
+            if (!response.ok) {
+                throw new Error("File not accessible");
+            }
+
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            // Single download trigger
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = fileName;
+
+            document.body.appendChild(link);
+            link.click();
+
+            // Cleanup
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(link);
+
+            toast.success('Certificate downloaded successfully!');
+        } catch (error) {
+            console.error('Download error:', error);
+            toast.error('Failed to download certificate');
+
+            // Final fallback → open only if download failed
+            window.open(certiUrl, '_blank');
+        }
+    };
+
+
     // Getting User Appointments Data Using API
     const getUserAppointments = async () => {
         try {
-
             const { data } = await axios.get(backendUrl + '/api/user/appointments', { headers: { token } })
             setAppointments(data.appointments.reverse())
-
         } catch (error) {
             console.log(error)
             toast.error(error.message)
@@ -46,24 +81,28 @@ const MyAppointments = () => {
 
     // Function to cancel appointment Using API
     const cancelAppointment = async (appointmentId) => {
-
         try {
+            setCancelLoading(appointmentId); // start loader
 
-            const { data } = await axios.post(backendUrl + '/api/user/cancel-appointment', { appointmentId }, { headers: { token } })
+            const { data } = await axios.post(
+                backendUrl + '/api/user/cancel-appointment',
+                { appointmentId },
+                { headers: { token } }
+            );
 
             if (data.success) {
-                toast.success(data.message)
-                getUserAppointments()
+                toast.success(data.message);
+                getUserAppointments();
             } else {
-                toast.error(data.message)
+                toast.error(data.message);
             }
-
         } catch (error) {
-            console.log(error)
-            toast.error(error.message)
+            console.log(error);
+            toast.error(error.message);
+        } finally {
+            setCancelLoading(null); // stop loader
         }
-
-    }
+    };
 
     const initPay = (order) => {
         const options = {
@@ -75,9 +114,7 @@ const MyAppointments = () => {
             order_id: order.id,
             receipt: order.receipt,
             handler: async (response) => {
-
                 console.log(response)
-
                 try {
                     const { data } = await axios.post(backendUrl + "/api/user/verifyRazorpay", response, { headers: { token } });
                     if (data.success) {
@@ -125,8 +162,6 @@ const MyAppointments = () => {
         }
     }
 
-
-
     useEffect(() => {
         if (token) {
             getUserAppointments()
@@ -137,41 +172,76 @@ const MyAppointments = () => {
         <div>
             <p className='pb-3 mt-12 text-lg font-medium text-gray-600 border-b'>My appointments</p>
             <div className=''>
-                {appointments.map((item, index) => (
-                    <div key={index} className='grid grid-cols-[1fr_2fr] gap-4 sm:flex sm:gap-6 py-4 border-b'>
-                        <div>
-                            <img className='w-36 bg-[#EAEFFF]' src={item.hospitalData.image} alt="" />
-                        </div>
-                        <div className='flex-1 text-sm text-[#5E5E5E]'>
-                            <p className='text-[#262626] text-base font-semibold'>{item.hospitalData.name}</p>
-                            <p>{item.hospitalData.speciality}</p>
-                            <p className='text-[#464646] font-medium mt-1'>Address:</p>
-                            <p className=''>{item.hospitalData.address.line1}</p>
-                            <p className=''>{item.hospitalData.address.line2}</p>
-                            <p className='mt-1'>
-                                <span className='text-sm text-[#3C3C3C] font-medium'>
-                                    Date & Time:
-                                </span>
-                                {" "}
-                                {formatSlotDate(item.slotDate)} | {item.slotTime}
-                            </p>
-                        </div>
-                        <div></div>
-                        <div className='flex flex-col gap-2 justify-end text-sm text-center'>
-                            {!item.cancelled && !item.payment && !item.isCompleted && payment !== item._id && <button onClick={() => setPayment(item._id)} className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-primary hover:text-white transition-all duration-300'>Pay Online</button>}
-                            {!item.cancelled && !item.payment && !item.isCompleted && payment === item._id && <button onClick={() => appointmentStripe(item._id)} className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-gray-100 hover:text-white transition-all duration-300 flex items-center justify-center'><img className='max-w-20 max-h-5' src={assets.stripe_logo} alt="" /></button>}
-                            {!item.cancelled && !item.payment && !item.isCompleted && payment === item._id && <button onClick={() => appointmentRazorpay(item._id)} className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-gray-100 hover:text-white transition-all duration-300 flex items-center justify-center'><img className='max-w-20 max-h-5' src={assets.razorpay_logo} alt="" /></button>}
-                            {!item.cancelled && item.payment && !item.isCompleted && <button className='sm:min-w-48 py-2 border rounded text-[#696969]  bg-[#EAEFFF]'>Paid</button>}
+                {appointments.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                        <p className="text-gray-500 text-lg mb-4">
+                            No Appointment Found
+                        </p>
 
-
-                            {item.isCompleted && <button className='sm:min-w-48 py-2 border border-green-500 rounded text-green-500'>Download</button>}
-                            {item.isCompleted && <p className='sm:min-w-48 py-2 text-black-500'>Vaccination Completed</p>}
-
-                            {!item.cancelled && !item.isCompleted && <button onClick={() => cancelAppointment(item._id)} className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-red-600 hover:text-white transition-all duration-300'>Cancel appointment</button>}
-                            {item.cancelled && !item.isCompleted && <button className='sm:min-w-48 py-2 border border-red-500 rounded text-red-500'>Appointment cancelled</button>}
-                        </div>
+                        <button
+                            onClick={() => navigate('/appointments')}
+                            className="px-6 py-2 bg-primary text-white rounded hover:bg-primary-dark transition"
+                        >
+                            Book Appointment
+                        </button>
                     </div>
-                ))}
+                ) : (
+                    appointments.map((item, index) => (
+                        <div key={index} className='grid grid-cols-[1fr_2fr] gap-4 sm:flex sm:gap-6 py-4 border-b'>
+                            <div>
+                                <img className='w-36 bg-[#EAEFFF]' src={item.hospitalData.image} alt="" />
+                            </div>
+                            <div className='flex-1 text-sm text-[#5E5E5E]'>
+                                <p className='text-[#262626] text-base font-semibold'>{item.hospitalData.name}</p>
+                                <p>{item.hospitalData.speciality}</p>
+
+                                {/* Display Vaccine Name */}
+                                <p className='text-[#464646] font-medium mt-1'>Vaccine:</p>
+                                <p className='text-[#2e7d32] font-semibold'>{item.vaccineName}</p>
+
+                                <p className='text-[#464646] font-medium mt-1'>Address:</p>
+                                <p className=''>{item.hospitalData.address.line1}</p>
+                                <p className=''>{item.hospitalData.address.line2}</p>
+                                <p className='mt-1'>
+                                    <span className='text-sm text-[#3C3C3C] font-medium'>
+                                        Date & Time:
+                                    </span>
+                                    {" "}
+                                    {formatSlotDate(item.slotDate)} | {item.slotTime}
+                                </p>
+                            </div>
+                            <div></div>
+                            <div className='flex flex-col gap-2 justify-end text-sm text-center'>
+                                {!item.cancelled && !item.payment && !item.isCompleted && payment !== item._id && <button onClick={() => setPayment(item._id)} className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-primary hover:text-white transition-all duration-300'>Pay Online</button>}
+                                {!item.cancelled && !item.payment && !item.isCompleted && payment === item._id && <button onClick={() => appointmentStripe(item._id)} className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-gray-100 hover:text-white transition-all duration-300 flex items-center justify-center'><img className='max-w-20 max-h-5' src={assets.stripe_logo} alt="" /></button>}
+                                {!item.cancelled && !item.payment && !item.isCompleted && payment === item._id && <button onClick={() => appointmentRazorpay(item._id)} className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-gray-100 hover:text-white transition-all duration-300 flex items-center justify-center'><img className='max-w-20 max-h-5' src={assets.razorpay_logo} alt="" /></button>}
+                                {!item.cancelled && item.payment && !item.isCompleted && <button className='sm:min-w-48 py-2 border rounded text-[#696969]  bg-[#EAEFFF]'>Paid</button>}
+
+                                {/* Download Certificate Button */}
+                                {item.isCompleted && item.certiUrl && (
+                                    <button
+                                        onClick={() => downloadPDF(item.certiUrl, item.vaccineName, item.userData.name)}
+                                        className='sm:min-w-48 py-2 border border-green-500 rounded text-green-500 hover:bg-green-50 transition-all duration-300'
+                                    >
+                                        Download Certificate
+                                    </button>
+                                )}
+
+                                {item.isCompleted && <p className='sm:min-w-48 py-2 text-green-600 font-medium'>Vaccination Completed</p>}
+
+                                {!item.cancelled && !item.isCompleted && (
+                                    <button
+                                        onClick={() => cancelAppointment(item._id)}
+                                        disabled={cancelLoading === item._id}
+                                        className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-red-600 hover:text-white transition-all duration-300 flex items-center justify-center'
+                                    >
+                                        {cancelLoading === item._id ? "Cancelling..." : "Cancel appointment"}
+                                    </button>
+                                )}
+                                {item.cancelled && !item.isCompleted && <button className='sm:min-w-48 py-2 border border-red-500 rounded text-red-500'>Appointment cancelled</button>}
+                            </div>
+                        </div>
+                    )))}
             </div>
         </div>
     )

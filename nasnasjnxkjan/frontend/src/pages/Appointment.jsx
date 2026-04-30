@@ -23,31 +23,31 @@ const Appointment = () => {
   const [availableVaccines, setAvailableVaccines] = useState([]);
   const [selectedVaccine, setSelectedVaccine] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [bookingLoading, setBookingLoading] = useState(false); // NEW STATE
   const navigate = useNavigate();
 
-const fetchHospitalInfo = async () => {
-  try {
-    const { data } = await axios.get(
-      `${backendUrl}/api/user/get-hospital/${hospitalId}`
-    );
+  const fetchHospitalInfo = async () => {
+    try {
+      const { data } = await axios.get(
+        `${backendUrl}/api/user/get-hospital/${hospitalId}`
+      );
 
-    if (data.success) {
-      setHospitalInfo(data.hospitalData);
+      if (data.success) {
+        setHospitalInfo(data.hospitalData);
 
-      const vaccines = data.hospitalData?.vaccines || [];
-      setAvailableVaccines(vaccines.filter(v => v.quantity > 0));
+        const vaccines = data.hospitalData?.vaccines || [];
+        setAvailableVaccines(vaccines.filter(v => v.quantity > 0));
 
-    } else {
-      toast.error(data.message);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log('Error fetching hospital info:', error);
+      toast.error('Failed to load hospital info');
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.log('Error fetching hospital info:', error);
-    toast.error('Failed to load hospital info');
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   const getAvailableSlots = async () => {
     setHospitalSlots([]);
@@ -109,6 +109,7 @@ const fetchHospitalInfo = async () => {
       toast.warning('Please select a time slot');
       return;
     }
+
     const date = hospitalSlots[slotIndex][0].datetime;
     const slotDate = new Date(
       date.getFullYear(),
@@ -124,6 +125,8 @@ const fetchHospitalInfo = async () => {
       vaccineName: selectedVaccine.vaccineName,
     };
     console.log('Booking Appointment Data:', appointmentData);
+
+    setBookingLoading(true); // START LOADING
     try {
       const { data } = await axios.post(
         `${backendUrl}/api/user/book-appointment`,
@@ -132,14 +135,16 @@ const fetchHospitalInfo = async () => {
       );
       if (data.success) {
         toast.success(data.message);
-fetchHospitalInfo()
-        // navigate('/my-appointments');
+        fetchHospitalInfo();
       } else {
         toast.error(data.message);
       }
     } catch (error) {
       console.error(error);
       toast.error(error.message);
+    } finally {
+      setBookingLoading(false); // STOP LOADING
+      navigate('/my-appointments');
     }
   };
 
@@ -244,11 +249,21 @@ fetchHospitalInfo()
               </div>
             ))}
         </div>
+        
+        {/* UPDATED BUTTON WITH LOADER */}
         <button
           onClick={bookAppointment}
-          className='bg-primary text-white text-sm font-light px-20 py-3 rounded-full my-6'
+          disabled={bookingLoading}
+          className='bg-primary text-white text-sm font-light px-20 py-3 rounded-full my-6 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed'
         >
-          Book an Appointment
+          {bookingLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white border-solid"></div>
+              <span>Booking...</span>
+            </>
+          ) : (
+            'Book an Appointment'
+          )}
         </button>
       </div>
     </div>

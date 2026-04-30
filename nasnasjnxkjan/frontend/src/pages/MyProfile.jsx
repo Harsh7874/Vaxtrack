@@ -7,43 +7,75 @@ import { assets } from '../assets/assets'
 const MyProfile = () => {
 
     const [isEdit, setIsEdit] = useState(false)
-
+const [saveLoading, setSaveLoading] = useState(false);
     const [image, setImage] = useState(false)
-
+const [pageLoading, setPageLoading] = useState(true);
     const { token, backendUrl, userData, setUserData, loadUserProfileData } = useContext(AppContext)
-
-    // Function to update user profile data using API
-    const updateUserProfileData = async () => {
-
+useEffect(() => {
+    const fetchProfile = async () => {
         try {
+            setPageLoading(true);
 
-            const formData = new FormData();
-
-            formData.append('name', userData.name)
-            formData.append('phone', userData.phone)
-            formData.append('address', JSON.stringify(userData.address))
-            formData.append('gender', userData.gender)
-            formData.append('dob', userData.dob)
-
-            image && formData.append('image', image)
-
-            const { data } = await axios.post(backendUrl + '/api/user/update-profile', formData, { headers: { token } })
-
-            if (data.success) {
-                toast.success(data.message)
-                await loadUserProfileData()
-                setIsEdit(false)
-                setImage(false)
-            } else {
-                toast.error(data.message)
+            if (token) {
+                await loadUserProfileData();
             }
 
         } catch (error) {
-            console.log(error)
-            toast.error(error.message)
+            console.log(error);
+        } finally {
+            setPageLoading(false);
+        }
+    };
+
+    fetchProfile();
+}, [token]);
+if (pageLoading) {
+    return (
+        <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+            <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 border-4 border-gray-300 border-t-primary rounded-full animate-spin"></div>
+                <p className="text-gray-600 font-medium">Loading Profile...</p>
+            </div>
+        </div>
+    );
+}
+    // Function to update user profile data using API
+  const updateUserProfileData = async () => {
+    try {
+        setSaveLoading(true); // start loader
+
+        const formData = new FormData();
+
+        formData.append('name', userData.name)
+        formData.append('phone', userData.phone)
+        formData.append('address', JSON.stringify(userData.address))
+        formData.append('gender', userData.gender)
+        formData.append('dob', userData.dob)
+
+        image && formData.append('image', image)
+
+        const { data } = await axios.post(
+            backendUrl + '/api/user/update-profile',
+            formData,
+            { headers: { token } }
+        )
+
+        if (data.success) {
+            toast.success(data.message)
+            await loadUserProfileData()
+            setIsEdit(false)
+            setImage(false)
+        } else {
+            toast.error(data.message)
         }
 
+    } catch (error) {
+        console.log(error)
+        toast.error(error.message)
+    } finally {
+        setSaveLoading(false); // stop loader
     }
+}
 
     return userData ? (
         <div className='max-w-lg flex flex-col gap-2 text-sm pt-5'>
@@ -115,10 +147,23 @@ const MyProfile = () => {
             </div>
             <div className='mt-10'>
 
-                {isEdit
-                    ? <button onClick={updateUserProfileData} className='border border-primary px-8 py-2 rounded-full hover:bg-primary hover:text-white transition-all'>Save information</button>
-                    : <button onClick={() => setIsEdit(true)} className='border border-primary px-8 py-2 rounded-full hover:bg-primary hover:text-white transition-all'>Edit</button>
-                }
+            {isEdit
+    ? <button
+        onClick={updateUserProfileData}
+        disabled={saveLoading}
+        className='border border-primary px-8 py-2 rounded-full hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2'
+    >
+        {saveLoading ? (
+            <>
+                <span className="w-4 h-4 border-2 border-gray-300 border-t-primary rounded-full animate-spin"></span>
+                Saving...
+            </>
+        ) : (
+            "Save information"
+        )}
+    </button>
+    : <button onClick={() => setIsEdit(true)} className='border border-primary px-8 py-2 rounded-full hover:bg-primary hover:text-white transition-all'>Edit</button>
+}
 
             </div>
         </div>

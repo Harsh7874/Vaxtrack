@@ -82,7 +82,6 @@ const refreshHospital = async () => {
     // }, [])
 
     useEffect(() => {
-        getHospitalsData()
 
     }, [])
 

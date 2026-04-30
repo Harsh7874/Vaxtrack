@@ -14,13 +14,16 @@ import 'react-toastify/dist/ReactToastify.css';
 import Verify from './pages/Verify'
 import Hospitals from './pages/Hospitals'
 import Vaccines from './pages/Vaccine'
-
+import QrVerify from './components/QrScanner'
+import ResetPassword from './pages/ResetPassword'
 const App = () => {
   return (
     <div className='mx-4 sm:mx-[10%]'>
       <ToastContainer />
       <Navbar />
       <Routes>
+        <Route path='/reset-password/:token' element={<ResetPassword />} />
+        <Route path='/verify-certi' element={<QrVerify />} />
         <Route path='/' element={<Home />} />
         <Route path='/hospitals' element={<Hospitals/>} />
         <Route path='/login' element={<Login />} />
