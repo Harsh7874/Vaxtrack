@@ -8,6 +8,7 @@ import adminRouter from "./routes/adminRoute.js"
 import hospitalRouter from "./routes/hospitalRoute.js"
 import vaccineRouter from "./routes/vaccineRoute.js"
 import publicRoutes from "./routes/publicRoutes.js"
+import cronRouter from "./routes/cronRoute.js"
 // app config
 dotenv.config()
 const app = express()
@@ -25,6 +26,7 @@ app.use("/api/admin", adminRouter)
 app.use("/api/hospital", hospitalRouter)
 app.use("/api/vaccine", vaccineRouter)
 app.use("/api/public", publicRoutes)
+app.use("/api/cron", cronRouter)
 
 
 
