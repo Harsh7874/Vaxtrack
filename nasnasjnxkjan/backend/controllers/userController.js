@@ -7,7 +7,10 @@ import appointmentModel from "../models/appointmentModel.js";
 import { v2 as cloudinary } from 'cloudinary'
 import stripe from "stripe";
 import razorpay from 'razorpay';
-
+import { sendEmail } from "../utils/sendEmail.js";
+import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
+import {forgotHtml} from '../utils/forgotpasswordhtml.js'
 // Gateway Initialize
 const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY)
 const razorpayInstance = new razorpay({
@@ -48,121 +51,137 @@ const registerUser = async (req, res) => {
 
         const newUser = new userModel(userData)
         const user = await newUser.save()
+
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET)
 
         res.json({ success: true, token })
 
     } catch (error) {
         console.log(error)
+
+        // Check for MongoDB duplicate key error
+        if (error.code === 11000) {
+            // Extract which field caused the duplicate
+            const field = Object.keys(error.keyPattern)[0];
+
+            if (field === 'email') {
+                return res.json({ success: false, message: "Email already exists" })
+            } else if (field === 'phone') {
+                return res.json({ success: false, message: "Phone number already exists" })
+            } else {
+                return res.json({ success: false, message: "User already exists" })
+            }
+        }
+
         res.json({ success: false, message: error.message })
     }
 }
 export const searchSuggestion = async (req, res) => {
-  try {
+    try {
 
-    const { query = "", limit = "20" } = req.query;
+        const { query = "", limit = "20" } = req.query;
 
-    const limitNum = Math.min(20, Math.max(1, parseInt(limit, 10)));
+        const limitNum = Math.min(20, Math.max(1, parseInt(limit, 10)));
 
-    if (!query.trim()) {
-      return res.json({
-        success: true,
-        suggestions: []
-      });
-    }
-
-    const pipeline = [
-      {
-        $search: {
-          index: "default",
-          compound: {
-            should: [
-              {
-                autocomplete: {
-                  query: query,
-                  path: "name"
-                }
-              },
-              {
-                autocomplete: {
-                  query: query,
-                  path: "about"
-                }
-              },
-              {
-                autocomplete: {
-                  query: query,
-                  path: "address.line1"
-                }
-              },
-              {
-                autocomplete: {
-                  query: query,
-                  path: "address.line2"
-                }
-              },
-              {
-                autocomplete: {
-                  query: query,
-                  path: "vaccines.vaccineName"
-                }
-              }
-            ]
-          }
+        if (!query.trim()) {
+            return res.json({
+                success: true,
+                suggestions: []
+            });
         }
-      },
 
-      { $limit: limitNum },
+        const pipeline = [
+            {
+                $search: {
+                    index: "default",
+                    compound: {
+                        should: [
+                            {
+                                autocomplete: {
+                                    query: query,
+                                    path: "name"
+                                }
+                            },
+                            {
+                                autocomplete: {
+                                    query: query,
+                                    path: "about"
+                                }
+                            },
+                            {
+                                autocomplete: {
+                                    query: query,
+                                    path: "address.line1"
+                                }
+                            },
+                            {
+                                autocomplete: {
+                                    query: query,
+                                    path: "address.line2"
+                                }
+                            },
+                            {
+                                autocomplete: {
+                                    query: query,
+                                    path: "vaccines.vaccineName"
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
 
-      {
-        $project: {
-          name: 1,
-          about: 1,
-          "address.line1": 1,
-          "address.line2": 1,
-          "vaccines.vaccineName": 1
-        }
-      }
-    ];
+            { $limit: limitNum },
 
-    const results = await hospitalModel.aggregate(pipeline);
+            {
+                $project: {
+                    name: 1,
+                    about: 1,
+                    "address.line1": 1,
+                    "address.line2": 1,
+                    "vaccines.vaccineName": 1
+                }
+            }
+        ];
 
-    // ----- FLATTEN LOGIC -----
-    let suggestions = [];
+        const results = await hospitalModel.aggregate(pipeline);
 
-    results.forEach(h => {
-      if (h.name) suggestions.push(h.name);
-      if (h.about) suggestions.push(h.about);
-      if (h.address?.line1) suggestions.push(h.address.line1);
-      if (h.address?.line2) suggestions.push(h.address.line2);
+        // ----- FLATTEN LOGIC -----
+        let suggestions = [];
 
-      if (Array.isArray(h.vaccines)) {
-        h.vaccines.forEach(v => {
-          if (v.vaccineName) suggestions.push(v.vaccineName);
+        results.forEach(h => {
+            if (h.name) suggestions.push(h.name);
+            if (h.about) suggestions.push(h.about);
+            if (h.address?.line1) suggestions.push(h.address.line1);
+            if (h.address?.line2) suggestions.push(h.address.line2);
+
+            if (Array.isArray(h.vaccines)) {
+                h.vaccines.forEach(v => {
+                    if (v.vaccineName) suggestions.push(v.vaccineName);
+                });
+            }
         });
-      }
-    });
 
-    // ----- CLEANUP -----
-    suggestions = [...new Set(suggestions)]   // unique
-      .filter(s =>
-        s.toLowerCase().includes(query.toLowerCase())
-      )
-      .slice(0, limitNum);
+        // ----- CLEANUP -----
+        suggestions = [...new Set(suggestions)]   // unique
+            .filter(s =>
+                s.toLowerCase().includes(query.toLowerCase())
+            )
+            .slice(0, limitNum);
 
-    return res.json({
-      success: true,
-      suggestions
-    });
+        return res.json({
+            success: true,
+            suggestions
+        });
 
-  } catch (error) {
-    console.error("autocomplete error:", error);
+    } catch (error) {
+        console.error("autocomplete error:", error);
 
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
 };
 
 // API to login user
@@ -190,6 +209,61 @@ const loginUser = async (req, res) => {
         res.json({ success: false, message: error.message })
     }
 }
+
+
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+export const googleLogin = async (req, res) => {
+    try {
+        const { token } = req.body;
+
+        // 1️⃣ Verify token with Google
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+
+        const email = payload.email;
+        const name = payload.name;
+        const image = payload.picture;
+
+        // 2️⃣ Find user
+        let user = await userModel.findOne({ email });
+
+        // 3️⃣ If NOT exists → create user
+        if (!user) {
+            user = await userModel.create({
+                name,
+                email,
+                image,
+                password: "GOOGLE_AUTH" // no password for google users
+            });
+        }
+
+        // 4️⃣ Generate YOUR JWT
+        const appToken = jwt.sign(
+            { id: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        res.json({
+            success: true,
+            token: appToken,
+            user
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.json({
+            success: false,
+            message: "Google authentication failed"
+        });
+    }
+};
 
 // API to get user profile data
 const getProfile = async (req, res) => {
@@ -377,7 +451,7 @@ const listAppointment = async (req, res) => {
     try {
 
         const { userId } = req.body
-        const appointments = await appointmentModel.find({ userId })
+        const appointments = await appointmentModel.find({ userId }).lean()
 
         res.json({ success: true, appointments })
 
@@ -443,12 +517,25 @@ export const searchHospitals = async (req, res) => {
             });
         }
 
-        // DISTANCE BOOST (ranking only)
+        // DISTANCE FILTER (optional: within 10km radius)
         if (hasCoords) {
-            searchStage.$search.compound.filter = [{ geoWithin: { circle: { center: { type: "Point", coordinates: [lonNum, latNum] }, radius: 10000 }, path: "location" } }];
+            searchStage.$search.compound.filter = [
+                {
+                    geoWithin: {
+                        circle: {
+                            center: {
+                                type: "Point",
+                                coordinates: [lonNum, latNum]
+                            },
+                            radius: 10000
+                        },
+                        path: "location"
+                    }
+                }
+            ];
         }
 
-        // ----- CRITICAL FIX: Fallback when no query -----
+        // ----- FALLBACK: When no query -----
         if (
             searchStage.$search.compound.must.length === 0 &&
             !searchStage.$search.compound.should
@@ -463,127 +550,139 @@ export const searchHospitals = async (req, res) => {
 
         if (sortBy === "price_low") {
             sortStages.push({ $sort: { "vaccines.price": 1 } });
-        } else if (sortBy === "price_high") {``
+        } else if (sortBy === "price_high") {
             sortStages.push({ $sort: { "vaccines.price": -1 } });
-        } else if (sortBy === "distance" && hasCoords) {
-            sortStages.push({ $sort: { distance: 1 } });
+        } else if (sortBy !== "distance") {
+            // Default sort by search relevance when no specific sort is chosen
+            sortStages.push({ $sort: { score: -1 } });
         }
 
         // ----- PIPELINE -----
         const pipeline = [
             searchStage,
 
-            // Distance calculation (Haversine)
-            ...(hasCoords
-                ? [
-                    {
-                        $addFields: {
-                            distance: {
-                                $let: {
-                                    vars: {
-                                        lat1: { $multiply: [latNum, Math.PI / 180] },
-                                        lon1: { $multiply: [lonNum, Math.PI / 180] },
+            // Calculate distance if coordinates provided
+            ...(hasCoords ? [
+                {
+                    $addFields: {
+                        distance: {
+                            $let: {
+                                vars: {
+                                    lat1: { $multiply: [latNum, Math.PI / 180] },
+                                    lon1: { $multiply: [lonNum, Math.PI / 180] },
 
-                                        lat2: {
-                                            $multiply: [
-                                                { $arrayElemAt: ["$location.coordinates", 1] },
-                                                Math.PI / 180
-                                            ]
-                                        },
-
-                                        lon2: {
-                                            $multiply: [
-                                                { $arrayElemAt: ["$location.coordinates", 0] },
-                                                Math.PI / 180
-                                            ]
-                                        }
+                                    lat2: {
+                                        $multiply: [
+                                            { $arrayElemAt: ["$location.coordinates", 1] },
+                                            Math.PI / 180
+                                        ]
                                     },
 
-                                    in: {
-                                        $let: {
-                                            vars: {
-                                                dLat: { $subtract: ["$$lat2", "$$lat1"] },
-                                                dLon: { $subtract: ["$$lon2", "$$lon1"] }
-                                            },
+                                    lon2: {
+                                        $multiply: [
+                                            { $arrayElemAt: ["$location.coordinates", 0] },
+                                            Math.PI / 180
+                                        ]
+                                    }
+                                },
 
-                                            in: {
-                                                $multiply: [
-                                                    6371000,
-                                                    {
-                                                        $multiply: [
-                                                            2,
-                                                            {
-                                                                $atan2: [
-                                                                    {
-                                                                        $sqrt: {
-                                                                            $add: [
-                                                                                {
-                                                                                    $pow: [
-                                                                                        { $sin: { $divide: ["$$dLat", 2] } },
-                                                                                        2
-                                                                                    ]
-                                                                                },
-                                                                                {
-                                                                                    $multiply: [
-                                                                                        { $cos: "$$lat1" },
-                                                                                        { $cos: "$$lat2" },
-                                                                                        {
-                                                                                            $pow: [
-                                                                                                { $sin: { $divide: ["$$dLon", 2] } },
-                                                                                                2
-                                                                                            ]
-                                                                                        }
-                                                                                    ]
-                                                                                }
-                                                                            ]
-                                                                        }
-                                                                    },
-                                                                    {
-                                                                        $sqrt: {
-                                                                            $subtract: [
-                                                                                1,
-                                                                                {
-                                                                                    $add: [
-                                                                                        {
-                                                                                            $pow: [
-                                                                                                { $sin: { $divide: ["$$dLat", 2] } },
-                                                                                                2
-                                                                                            ]
-                                                                                        },
-                                                                                        {
-                                                                                            $multiply: [
-                                                                                                { $cos: "$$lat1" },
-                                                                                                { $cos: "$$lat2" },
-                                                                                                {
-                                                                                                    $pow: [
-                                                                                                        { $sin: { $divide: ["$$dLon", 2] } },
-                                                                                                        2
-                                                                                                    ]
-                                                                                                }
-                                                                                            ]
-                                                                                        }
-                                                                                    ]
-                                                                                }
-                                                                            ]
-                                                                        }
+                                in: {
+                                    $let: {
+                                        vars: {
+                                            dLat: { $subtract: ["$$lat2", "$$lat1"] },
+                                            dLon: { $subtract: ["$$lon2", "$$lon1"] }
+                                        },
+
+                                        in: {
+                                            $multiply: [
+                                                6371, // Earth radius in KM
+
+                                                {
+                                                    $multiply: [
+                                                        2,
+                                                        {
+                                                            $atan2: [
+                                                                {
+                                                                    $sqrt: {
+                                                                        $add: [
+                                                                            {
+                                                                                $pow: [
+                                                                                    { $sin: { $divide: ["$$dLat", 2] } },
+                                                                                    2
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                $multiply: [
+                                                                                    { $cos: "$$lat1" },
+                                                                                    { $cos: "$$lat2" },
+                                                                                    {
+                                                                                        $pow: [
+                                                                                            { $sin: { $divide: ["$$dLon", 2] } },
+                                                                                            2
+                                                                                        ]
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        ]
                                                                     }
-                                                                ]
-                                                            }
-                                                        ]
-                                                    }
-                                                ]
-                                            }
+                                                                },
+                                                                {
+                                                                    $sqrt: {
+                                                                        $subtract: [
+                                                                            1,
+                                                                            {
+                                                                                $add: [
+                                                                                    {
+                                                                                        $pow: [
+                                                                                            { $sin: { $divide: ["$$dLat", 2] } },
+                                                                                            2
+                                                                                        ]
+                                                                                    },
+                                                                                    {
+                                                                                        $multiply: [
+                                                                                            { $cos: "$$lat1" },
+                                                                                            { $cos: "$$lat2" },
+                                                                                            {
+                                                                                                $pow: [
+                                                                                                    { $sin: { $divide: ["$$dLon", 2] } },
+                                                                                                    2
+                                                                                                ]
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
                                         }
                                     }
                                 }
                             }
                         }
                     }
+                }
+            ] : []),
 
-                ]
-                : []),
+            // Add search score field
+            {
+                $addFields: {
+                    score: { $meta: "searchScore" }
+                }
+            },
 
-            // Projection
+            // Sort stage - AFTER distance field is added
+            ...(sortBy === "distance" && hasCoords
+                ? [{ $sort: { distance: 1, score: -1 } }]
+                : sortStages
+            ),
+
+            // Project fields
             {
                 $project: {
                     name: 1,
@@ -607,11 +706,9 @@ export const searchHospitals = async (req, res) => {
                     },
 
                     distance: 1,
-                    score: { $meta: "searchScore" }
+                    score: 1
                 }
             },
-
-            ...sortStages,
 
             { $skip: skip },
             { $limit: limitNum }
@@ -620,7 +717,7 @@ export const searchHospitals = async (req, res) => {
         // EXECUTE
         const results = await hospitalModel.aggregate(pipeline);
 
-        // COUNT (NO geoNear here)
+        // COUNT
         const countPipeline = [
             searchStage,
             { $count: "total" }
@@ -651,6 +748,43 @@ export const searchHospitals = async (req, res) => {
 
 
 
+export const verifyCerti = async (req, res) => {
+    try {
+        const { appointmentId } = req.query;
+
+        if (!appointmentId) {
+            return res.json({ message: "appointmentId is required" });
+        }
+
+        const appointentData = await appointmentModel
+            .findById(appointmentId)
+            .select(
+                "_id userData.name hospitalData.name vaccineName slotDate slotTime isCompleted cancelled"
+            )
+            .lean();
+
+        if (
+            !appointentData ||
+            appointentData.isCompleted === false ||
+            appointentData.cancelled === true
+        ) {
+            return res.json({ valid: false });
+        }
+
+        res.json({
+            success: true,
+            valid: true,
+            appointentData,
+        });
+    } catch (error) {
+        console.log(error);
+        return res.json({
+            success: false,
+            message: "VACCINE CHECK FAILED",
+            error,
+        });
+    }
+};
 
 
 // API to make payment of appointment using razorpay
@@ -658,6 +792,10 @@ const paymentRazorpay = async (req, res) => {
     try {
 
         const { appointmentId } = req.body
+
+        if (!appointmentId) {
+            return res.json({ messge: "appointmentId is required" })
+        }
         const appointmentData = await appointmentModel.findById(appointmentId)
 
         if (!appointmentData || appointmentData.cancelled) {
@@ -741,6 +879,88 @@ const paymentStripe = async (req, res) => {
         res.json({ success: false, message: error.message })
     }
 }
+
+
+
+
+export const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        const user = await userModel.findOne({ email });
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+
+        // Generate Token
+        const resetToken = crypto.randomBytes(32).toString("hex");
+
+        // Hash token before saving
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(resetToken)
+            .digest("hex");
+
+        user.resetPasswordToken = hashedToken;
+        user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 15 min
+
+        await user.save();
+        let a = process.env.FRONTEND_URL
+        const resetUrl =
+            `${a}reset-password/${resetToken}`;
+        let b = await forgotHtml(resetUrl)
+        await sendEmail({
+            to: user.email,
+            subject: "Password Reset",
+            html:b,
+        });
+
+        res.json({ success: true, message: "Reset link sent" });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+};
+
+
+export const resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.body;
+
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        const user = await userModel.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpire: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return res.json({
+                success: false,
+                message: "Invalid or expired token",
+            });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(password, salt);
+
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+
+        await user.save();
+
+        res.json({ success: true, message: "Password updated" });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+};
+
+
+
 
 const verifyStripe = async (req, res) => {
     try {

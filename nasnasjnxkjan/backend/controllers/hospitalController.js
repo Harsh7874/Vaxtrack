@@ -145,10 +145,7 @@ const appointmentComplete = async (req, res) => {
     }
 
     // 2️⃣ Mark as completed
-    await appointmentModel.findByIdAndUpdate(
-      appointmentId,
-      { isCompleted: true }
-    );
+   
 
     if (certResult.success) {
 
@@ -163,6 +160,11 @@ const appointmentComplete = async (req, res) => {
         subject: "Your Vaccination Certificate",
         html: emailHtml,
       }).then((info)=>{console.log("Email Send ",info)});
+      const certiurl=certResult?.url || "CERTI NOT CREATED"
+       await appointmentModel.findByIdAndUpdate(
+      appointmentId,
+      { isCompleted: true,certiUrl:certiurl }
+    );
     }
 
 
@@ -217,7 +219,7 @@ const appointmentComplete = async (req, res) => {
 const hospitalList = async (req, res) => {
   try {
 
-    const hospitals = await hospitalModel.find({}).select(['-password', '-email'])
+    const hospitals = await hospitalModel.find({}).select(['-password', '-email']).limit(1)
     res.json({ success: true, hospitals })
 
   } catch (error) {
@@ -286,7 +288,7 @@ const hospitalDashboard = async (req, res) => {
 
     appointments.map((item) => {
       if (item.isCompleted || item.payment) {
-        earnings += item.vaccinePrice
+        earnings +=Number(item?.vaccinePrice)
       }
     })
 

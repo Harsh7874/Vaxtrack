@@ -16,7 +16,7 @@ import Hospitals from './pages/Hospitals'
 import Vaccines from './pages/Vaccine'
 import QrVerify from './components/QrScanner'
 import ResetPassword from './pages/ResetPassword'
-const App = () => {
+  const App = () => {
   return (
     <div className='mx-4 sm:mx-[10%]'>
       <ToastContainer />

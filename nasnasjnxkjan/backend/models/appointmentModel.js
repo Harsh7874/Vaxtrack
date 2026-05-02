@@ -6,14 +6,17 @@ const appointmentSchema = new mongoose.Schema({
     vaccineId:{ type: String, required: true },
     vaccinePrice:{ type: String, required: true },
     vaccineName:{ type: String, required: true },
-    slotDate: { type: Date, required: true },
+    slotDate: { type: Date, required: true,index:true },
     slotTime: { type: String, required: true },
     userData: { type: Object, required: true },
     hospitalData: { type: Object, required: true },
     date: { type: Number, required: true },
-    cancelled: { type: Boolean, default: false },
+    certiUrl:{ type: String },
+    cancelled: { type: Boolean, default: false,index:true },
     payment: { type: Boolean, default: false },
-    isCompleted: { type: Boolean, default: false }
+    isCompleted: { type: Boolean, default: false,index:true },
+    missedEmailSent: { type: Boolean, default: false }
+
 })
 
 const appointmentModel = mongoose.models.appointment || mongoose.model("appointment", appointmentSchema)
