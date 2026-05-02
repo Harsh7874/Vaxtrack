@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import validator from "validator";
+import mongoose from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
 import userModel from "../models/userModel.js";
 import hospitalModel from "../models/hospitalModel.js";
@@ -318,6 +319,69 @@ const allVaccines = async (req, res) => {
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
+    }
+}
+
+// API to delete vaccine from catalog only or from the entire system
+const deleteVaccine = async (req, res) => {
+    try {
+        const { vaccineId } = req.params;
+        const { deleteFromEntireSystem = false, deleteMode } = req.body;
+
+        if (!vaccineId) {
+            return res.status(400).json({
+                success: false,
+                message: "Vaccine ID is required",
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(vaccineId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid vaccine ID",
+            });
+        }
+
+        const removeFromEntireSystem =
+            deleteFromEntireSystem === true ||
+            deleteFromEntireSystem === "true" ||
+            deleteMode === "entire-system" ||
+            deleteMode === "entire_system" ||
+            deleteMode === "system";
+
+    
+
+  
+
+        await vaccineModel.findByIdAndDelete(vaccineId);
+
+        if (removeFromEntireSystem) {
+            await hospitalModel.updateMany(
+                {},
+                { $pull: { vaccines: { vaccineId: vaccineId } } }
+            );
+
+            await requestModel.updateMany(
+                {},
+                { $pull: { vaccines: { vaccineId: vaccineId } } }
+            );
+
+            await requestModel.deleteMany({ vaccines: { $size: 0 } });
+        }
+
+        return res.json({
+            success: true,
+            message: removeFromEntireSystem
+                ? "Vaccine deleted from the entire system"
+                : "Vaccine deleted from vaccine catalog only",
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
     }
 }
 
@@ -657,6 +721,7 @@ export {
     allHospitals,
     addVaccine,
     allVaccines,
+    deleteVaccine,
     adminDashboard,
    changeAvailablity
 }
