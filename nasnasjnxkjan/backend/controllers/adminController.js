@@ -291,6 +291,60 @@ const allHospitals = async (req, res) => {
     }
 }
 
+// API to delete hospital and related records
+const deleteHospital = async (req, res) => {
+    try {
+        const { hospitalId } = req.params;
+
+        if (!hospitalId) {
+            return res.status(400).json({
+                success: false,
+                message: "Hospital ID is required",
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(hospitalId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid hospital ID",
+            });
+        }
+
+        // const hospital = await hospitalModel.findById(hospitalId);
+
+        // if (!hospital) {
+        //     return res.status(404).json({
+        //         success: false,
+        //         message: "Hospital not found",
+        //     });
+        // }
+
+        const [deletedAppointments, deletedRequests] = await Promise.all([
+            appointmentModel.deleteMany({ hospitalId: hospitalId.toString(), isCompleted: false }),
+            requestModel.deleteMany({ hospitalId: hospitalId.toString() }),
+        ]);
+
+        await hospitalModel.findByIdAndDelete(hospitalId);
+
+        return res.json({
+            success: true,
+            message: "Hospital deleted successfully",
+            deleted: {
+                hospitalId,
+                appointments: deletedAppointments.deletedCount,
+                requests: deletedRequests.deletedCount,
+            },
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+}
+
 
 
 // API to change hospitam availablity for Admin and Doctor Panel
@@ -719,6 +773,7 @@ export {
     appointmentCancel,
     addHospital,
     allHospitals,
+    deleteHospital,
     addVaccine,
     allVaccines,
     deleteVaccine,
