@@ -12,11 +12,11 @@ import crypto from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import {forgotHtml} from '../utils/forgotpasswordhtml.js'
 // Gateway Initialize
-const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY)
-const razorpayInstance = new razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-})
+// const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY)
+// const razorpayInstance = new razorpay({
+//     key_id: process.env.RAZORPAY_KEY_ID,
+//     key_secret: process.env.RAZORPAY_KEY_SECRET,
+// })
 
 // API to register user
 const registerUser = async (req, res) => {
@@ -329,15 +329,15 @@ const bookAppointment = async (req, res) => {
 
 
         // checking for slot availablity 
-        let slots_booked = hospitalData.slots_booked || {};
+        let bookedSlotsByDate = hospitalData.slots_booked || {};
 
         // If date does not exist, create it
-        if (!slots_booked[slotDate]) {
-            slots_booked[slotDate] = [];
+        if (!bookedSlotsByDate[slotDate]) {
+            bookedSlotsByDate[slotDate] = [];
         }
 
         // Find slot by time
-        let slot = slots_booked[slotDate].find(s => s.time === slotTime);
+        let slot = bookedSlotsByDate[slotDate].find(s => s.time === slotTime);
 
         if (slot) {
             // Slot exists → check capacity
@@ -349,7 +349,7 @@ const bookAppointment = async (req, res) => {
             slot.nuser += 1;
         } else {
             // New slot → create with first booking
-            slots_booked[slotDate].push({
+            bookedSlotsByDate[slotDate].push({
                 time: slotTime,
                 nuser: 1
             });
@@ -377,7 +377,7 @@ const bookAppointment = async (req, res) => {
         await newAppointment.save()
 
         // save new slots data in docData
-        await hospitalModel.findByIdAndUpdate(hospitalId, { slots_booked })
+        await hospitalModel.findByIdAndUpdate(hospitalId, { slots_booked: bookedSlotsByDate })
 
         res.json({ success: true, message: 'Appointment Booked' })
 

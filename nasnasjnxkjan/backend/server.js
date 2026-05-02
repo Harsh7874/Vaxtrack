@@ -1,6 +1,6 @@
 import express from "express"
 import cors from 'cors'
-import 'dotenv/config'
+import dotenv from "dotenv"
 import connectDB from "./config/mongodb.js"
 import connectCloudinary from "./config/cloudinary.js"
 import userRouter from "./routes/userRoute.js"
@@ -9,6 +9,7 @@ import hospitalRouter from "./routes/hospitalRoute.js"
 import vaccineRouter from "./routes/vaccineRoute.js"
 import publicRoutes from "./routes/publicRoutes.js"
 // app config
+dotenv.config()
 const app = express()
 const port = process.env.PORT || 4000
 await connectDB()
