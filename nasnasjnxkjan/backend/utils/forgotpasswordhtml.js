@@ -22,7 +22,7 @@ export const forgotHtml = (resetUrl) => `
                 Reset Your Password
               </h1>
               <p style="margin-top:10px; font-size:14px; color:#e0e7ff;">
-                Secure password reset for your Vaxtrack account
+                Secure password reset for your Pikwaxin account
               </p>
             </td>
           </tr>
@@ -33,7 +33,7 @@ export const forgotHtml = (resetUrl) => `
 
               <p>
                 We received a request to reset the password for your
-                <strong style="color:#e5e7eb;">Vaxtrack</strong> account.
+                <strong style="color:#e5e7eb;">Pikwaxin</strong> account.
                 Click the button below to set a new password.
               </p>
 
@@ -83,7 +83,7 @@ export const forgotHtml = (resetUrl) => `
                   <td>
                     <p style="margin:0; font-size:14px; color:#cbd5e1;">Regards,</p>
                     <p style="margin:6px 0 0; font-size:20px; font-weight:700; color:#3b82f6;">
-                      Vaxtrack Team
+                      Pikwaxin Team
                     </p>
                   </td>
                   <td align="right">
@@ -97,7 +97,7 @@ export const forgotHtml = (resetUrl) => `
                         font-weight:800;
                         font-size:16px;
                       ">
-                        VAXTRACK
+                        Pikwaxin
                       </span>
                     </a>
                   </td>
@@ -112,7 +112,7 @@ export const forgotHtml = (resetUrl) => `
           <tr>
             <td align="center" style="padding:14px; font-size:12px; color:#64748b;">
               This is an automated email. Please do not reply.<br />
-              © 2026 Vaxtrack. All rights reserved.
+              © 2026 Pikwaxin. All rights reserved.
             </td>
           </tr>
         </table>

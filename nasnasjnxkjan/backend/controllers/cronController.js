@@ -47,7 +47,7 @@ const buildMissedAppointmentEmail = ({
       ${bookNewUrl}
     </p>` : ""}
     <hr />
-    <p>Regards,<br />VaxTrack Team</p>
+    <p>Regards,<br />Pikwaxin Team</p>
   </div>
 `;
 

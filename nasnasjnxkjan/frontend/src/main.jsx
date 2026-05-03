@@ -13,7 +13,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
       <AppContextProvider>
         <App />
-        <Disclaimer />
+        {/* <Disclaimer /> */}
       </AppContextProvider>
     </BrowserRouter>,
 

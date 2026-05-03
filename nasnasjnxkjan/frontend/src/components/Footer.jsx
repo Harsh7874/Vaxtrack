@@ -8,7 +8,7 @@ const Footer = () => {
 
         <div>
           <img className='mb-5 w-40' src={assets.logo} alt="" />
-          <p className='w-full md:w-2/3 text-gray-600 leading-6'>Your trusted partner in vaccine management. VaxTrack helps you locate nearby hospitals, book vaccine appointments, track doses, and download certificates — all in one seamless platform. We’re committed to making vaccination easy, safe, and accessible for everyone.</p>
+          <p className='w-full md:w-2/3 text-gray-600 leading-6'>Your trusted partner in vaccine management. Pikwaxin helps you locate nearby hospitals, book vaccine appointments, track doses, and download certificates — all in one seamless platform. We’re committed to making vaccination easy, safe, and accessible for everyone.</p>
         </div>
 
         <div>
@@ -25,7 +25,7 @@ const Footer = () => {
           <p className='text-xl font-medium mb-5'>GET IN TOUCH</p>
           <ul className='flex flex-col gap-2 text-gray-600'>
             <li>📞 +91-98765-43210</li>
-            <li>📧 support@vaxtrack.in</li>
+            <li>📧 support@pikwaxin.in</li>
           </ul>
         </div>
 
@@ -33,7 +33,7 @@ const Footer = () => {
 
       <div>
         <hr />
-        <p className='py-5 text-sm text-center'>© 2025 VaxTrack – Your Health, Our Priority- All Right Reserved.</p>
+        <p className='py-5 text-sm text-center'>© 2025 Pikwaxin – Your Health, Our Priority- All Right Reserved.</p>
       </div>
 
     </div>

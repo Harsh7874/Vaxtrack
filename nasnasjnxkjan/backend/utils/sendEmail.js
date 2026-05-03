@@ -25,7 +25,7 @@ transporter.verify((err, success) => {
 export async function sendEmail({ to, subject, html }) {
   try {
     const mailOptions = {
-      from: `Vaxtrack <${process.env.EMAIL_USER}>`,
+      from: `Pikwaxin <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,

@@ -12,10 +12,10 @@ const About = () => {
       <div className='my-10 flex flex-col md:flex-row gap-12'>
         <img className='w-full md:max-w-[360px]' src={assets.about_image} alt="" />
         <div className='flex flex-col justify-center gap-6 md:w-2/4 text-sm text-gray-600'>
-          <p>Welcome to VaxTrack, your trusted companion in simplifying vaccine booking and health safety management. At VaxTrack, we understand the importance of timely vaccinations and the challenges individuals face in finding available slots and nearby hospitals..</p>
-          <p>VaxTrack is dedicated to innovation in healthcare technology. Our platform is designed to streamline vaccine appointments, provide real-time hospital and vaccine availability, and allow easy access to vaccination certificates and appointment details. Whether you're booking your first dose or managing follow-ups, VaxTrack is here to make the process smooth and secure.</p>
+          <p>Welcome to Pikwaxin, your trusted companion in simplifying vaccine booking and health safety management. At Pikwaxin, we understand the importance of timely vaccinations and the challenges individuals face in finding available slots and nearby hospitals..</p>
+          <p>Pikwaxin is dedicated to innovation in healthcare technology. Our platform is designed to streamline vaccine appointments, provide real-time hospital and vaccine availability, and allow easy access to vaccination certificates and appointment details. Whether you're booking your first dose or managing follow-ups, Pikwaxin is here to make the process smooth and secure.</p>
           <b className='text-gray-800'>Our Vision</b>
-          <p>Our vision at VaxTrack is to create a unified, accessible vaccination experience for everyone. We strive to connect patients with certified hospitals efficiently, ensuring that access to essential vaccines is just a few clicks away — anytime, anywhere.</p>
+          <p>Our vision at Pikwaxin is to create a unified, accessible vaccination experience for everyone. We strive to connect patients with certified hospitals efficiently, ensuring that access to essential vaccines is just a few clicks away — anytime, anywhere.</p>
         </div>
       </div>
 
